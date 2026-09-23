@@ -22,6 +22,11 @@
     "type": "text"
   },
   {
+    "name": "test3.txt",
+    "path": "test3.txt",
+    "type": "text"
+  },
+  {
     "name": "MEITU_20260911_115215262.jpg",
     "path": "MEITU_20260911_115215262.jpg",
     "type": "image"
