@@ -22,7 +22,7 @@
             flex-direction: column;
         }
 
-        /* ===== 顶部栏（与主页完全一致）===== */
+        /* ===== 顶部栏 ===== */
         .top-bar {
             width: 100%;
             background: rgba(20, 12, 24, 0.9);
@@ -401,7 +401,7 @@
 </head>
 <body>
 
-    <!-- 顶部栏（与主页一致） -->
+    <!-- 顶部栏 -->
     <header class="top-bar">
         <a href="index.html" class="brand">墨阁</a>
         <a href="投稿.html" class="submit-link">
@@ -440,10 +440,19 @@
     </div>
 
     <script>
-        // ---------- 配置：当前目录相对路径（根目录为 ''）----------
-        const BASE_PATH = '';
+        // ============================================================
+        // 配置区：请根据你的仓库修改以下三项
+        // ============================================================
+        const GITHUB_OWNER = 'dadunerge';
+        const GITHUB_REPO = 'JYP';
+        const GITHUB_BRANCH = 'main';
 
-        // ---------- 全局状态 ----------
+        // 要显示的根目录（相对于仓库根目录），留空表示仓库根目录
+        const BASE_DIR = '';
+
+        // ============================================================
+        // 全局状态
+        // ============================================================
         const fileGrid = document.getElementById('fileGrid');
         const modalOverlay = document.getElementById('modalOverlay');
         const modalTitle = document.getElementById('modalTitle');
@@ -451,172 +460,56 @@
         const modalBody = document.getElementById('modalBody');
         const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-        // 支持的图片扩展名
-        const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
-        // 支持的文本扩展名（只显示 txt）
-        const TEXT_EXTENSIONS = ['txt'];
+        // ============================================================
+        // 读取 files.json 清单
+        // ============================================================
+        let manifestCache = null;
 
-        // ---------- 工具函数 ----------
-        function getExtension(filename) {
-            const parts = filename.split('.');
-            if (parts.length < 2) return '';
-            return parts.pop().toLowerCase();
+        async function loadManifest() {
+            if (manifestCache) return manifestCache;
+            const res = await fetch(`files.json?t=${Date.now()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            manifestCache = await res.json();
+            return manifestCache;
         }
 
-        function isImage(filename) {
-            return IMAGE_EXTENSIONS.includes(getExtension(filename));
-        }
+        // 从清单中获取指定路径的子项
+        function getEntriesFromManifest(manifest, targetPath) {
+            if (!manifest) return [];
 
-        function isText(filename) {
-            return TEXT_EXTENSIONS.includes(getExtension(filename));
-        }
+            // 规范化路径
+            let cleanPath = (targetPath || '').replace(/^\.?\//, '').replace(/\/$/, '');
 
-        function isFolder(entry) {
-            // 目录没有扩展名，或者以 / 结尾
-            return entry.endsWith('/') || (!entry.includes('.') && !isImage(entry) && !isText(entry));
-        }
-
-        // 根据文件名返回图标
-        function getFileIcon(name) {
-            if (isImage(name)) return '🖼️';
-            if (isText(name)) return '📄';
-            if (isFolder(name)) return '📁';
-            return '📄';
-        }
-
-        // 在网格中渲染文件项
-        function renderFileItem(container, name, path, onClick) {
-            const item = document.createElement('div');
-            item.className = 'file-item';
-            if (isFolder(name)) item.classList.add('is-folder');
-
-            const icon = document.createElement('div');
-            icon.className = 'file-icon';
-            icon.textContent = getFileIcon(name);
-
-            const label = document.createElement('div');
-            label.className = 'file-name';
-            label.textContent = name;
-
-            item.appendChild(icon);
-            item.appendChild(label);
-            item.addEventListener('click', () => onClick(path, name));
-
-            container.appendChild(item);
-        }
-
-        // ---------- 核心：获取目录内容（使用 fetch 探测的方式）----------
-        // 由于纯静态页面无法列出目录，我们采用两种策略：
-        // 1. 如果服务器支持目录索引（例如 GitHub Pages 会返回 HTML 目录列表），可以解析 HTML 获取文件列表。
-        // 2. 更可靠的方式：使用已知文件清单（但我们需要自动获取）。
-        // 
-        // 本方案采用解析目录索引 HTML 的方式，因为 GitHub Pages 默认开启目录索引（返回 HTML 页面）。
-        // 如果返回的不是 HTML 目录列表（例如 404 或 JSON），则回退到预设的常见文件。
-        //
-        // 为了演示和实用性，这里会尝试 fetch 当前目录，解析返回的 HTML 中的链接。
-        // 对于本地开发环境（如 VS Code Live Server），也会返回目录列表。
-        // 如果无法解析，则显示提示。
-
-        async function fetchDirectory(path) {
-            // 确保路径以 / 结尾
-            let dirPath = path;
-            if (dirPath && !dirPath.endsWith('/')) dirPath += '/';
-            if (dirPath.startsWith('/')) dirPath = dirPath.substring(1);
-
-            const url = dirPath || './';
-
-            try {
-                const response = await fetch(url, { method: 'GET' });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const contentType = response.headers.get('content-type') || '';
-                // 如果不是 HTML，无法解析目录
-                if (!contentType.includes('text/html')) {
-                    throw new Error('非 HTML 目录列表');
-                }
-
-                const html = await response.text();
-
-                // 解析 HTML 中的链接
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                const links = Array.from(doc.querySelectorAll('a'));
-                const entries = [];
-
-                for (const link of links) {
-                    let href = link.getAttribute('href');
-                    if (!href) continue;
-
-                    // 去除 URL 参数和锚点
-                    href = href.split('?')[0].split('#')[0];
-
-                    // 跳过父目录链接
-                    if (href === '../' || href === '..' || href === './' || href === '.' || href === '/') continue;
-                    // 跳过绝对路径外链
-                    if (href.startsWith('http://') || href.startsWith('https://')) continue;
-                    // 跳过空链接
-                    if (!href || href === '') continue;
-
-                    // 获取文件名
-                    let name = href;
-                    // 如果 href 是相对路径，保留完整路径
-                    // 如果是当前目录下的文件，href 可能只是文件名
-                    // 如果是子目录，可能以 / 结尾
-                    const displayName = name.replace(/\/$/, '').split('/').pop();
-                    if (!displayName) continue;
-
-                    // 过滤掉隐藏文件（以 . 开头）和特殊文件
-                    if (displayName.startsWith('.')) continue;
-
-                    // 构建完整路径
-                    let fullPath = dirPath + name;
-                    // 规范化路径
-                    fullPath = fullPath.replace(/\/+/g, '/');
-
-                    // 判断是目录还是文件：目录通常以 / 结尾
-                    const isDir = name.endsWith('/');
-
-                    // 只保留：文件夹、txt、图片
-                    if (isDir) {
-                        entries.push({ name: displayName, path: fullPath, type: 'folder' });
-                    } else if (isText(displayName)) {
-                        entries.push({ name: displayName, path: fullPath, type: 'text' });
-                    } else if (isImage(displayName)) {
-                        entries.push({ name: displayName, path: fullPath, type: 'image' });
-                    }
-                }
-
-                // 去重（按路径）
-                const seen = new Set();
-                const unique = entries.filter(e => {
-                    if (seen.has(e.path)) return false;
-                    seen.add(e.path);
-                    return true;
-                });
-
-                // 排序：文件夹在前，然后文本，然后图片
-                unique.sort((a, b) => {
-                    const order = { folder: 0, text: 1, image: 2 };
-                    if (order[a.type] !== order[b.type]) return order[a.type] - order[b.type];
-                    return a.name.localeCompare(b.name);
-                });
-
-                return unique;
-
-            } catch (err) {
-                console.warn('无法解析目录，可能服务器不支持目录索引:', err);
-                // 回退：尝试直接读取已知的常见文件？不，这里返回空并提示
-                throw err;
+            // 如果设置了基础目录，需要去掉前缀
+            if (BASE_DIR) {
+                const prefix = BASE_DIR.replace(/^\.?\//, '').replace(/\/$/, '');
+                if (cleanPath === prefix) cleanPath = '';
+                else if (cleanPath.startsWith(prefix + '/')) cleanPath = cleanPath.slice(prefix.length + 1);
             }
+
+            if (!cleanPath) return manifest;
+
+            const parts = cleanPath.split('/').filter(Boolean);
+            let current = manifest;
+
+            for (const part of parts) {
+                const found = current.find(item => item.name === part && item.type === 'folder');
+                if (!found) return [];
+                current = found.children || [];
+            }
+
+            return current;
         }
 
-        // ---------- 渲染文件管理器主界面 ----------
+        // ============================================================
+        // 渲染文件管理器主界面
+        // ============================================================
         async function loadFileManager() {
             fileGrid.innerHTML = '<div class="empty-message">正在读取目录…</div>';
 
             try {
-                const entries = await fetchDirectory(BASE_PATH);
+                const manifest = await loadManifest();
+                const entries = getEntriesFromManifest(manifest, BASE_DIR);
 
                 if (entries.length === 0) {
                     fileGrid.innerHTML = '<div class="empty-message">此目录下没有可显示的文件（文件夹 / TXT / 图片）</div>';
@@ -644,18 +537,21 @@
                     fileGrid.appendChild(item);
                 }
             } catch (err) {
-                fileGrid.innerHTML = '<div class="empty-message">⚠️ 无法读取目录列表<br><span style="font-size:0.85rem;">请确保服务器开启了目录索引，或使用支持目录列表的环境</span></div>';
+                fileGrid.innerHTML = `<div class="empty-message">⚠️ 读取失败：${err.message}<br><span style="font-size:0.85rem;">请确认 files.json 已由 GitHub Actions 生成</span></div>`;
             }
         }
 
-        // ---------- 处理文件点击 ----------
+        // ============================================================
+        // 处理文件点击
+        // ============================================================
         async function handleFileClick(entry) {
             if (entry.type === 'folder') {
-                // 打开文件夹，显示内部文件
                 openModal(entry.name, '📁', '<div class="modal-loading">正在读取文件夹…</div>');
 
                 try {
-                    const innerEntries = await fetchDirectory(entry.path);
+                    const manifest = await loadManifest();
+                    const innerEntries = getEntriesFromManifest(manifest, entry.path);
+
                     if (innerEntries.length === 0) {
                         modalBody.innerHTML = '<div class="empty-message">此文件夹为空或没有可显示的文件</div>';
                         return;
@@ -690,17 +586,17 @@
                     modalBody.appendChild(listDiv);
 
                 } catch (err) {
-                    modalBody.innerHTML = '<div class="modal-error">无法读取文件夹内容</div>';
+                    modalBody.innerHTML = `<div class="modal-error">无法读取文件夹：${err.message}</div>`;
                 }
+
             } else if (entry.type === 'text') {
-                // 打开文本
                 openModal(entry.name, '📄', '<div class="modal-loading">正在加载文本…</div>');
 
                 try {
-                    const timestamp = new Date().getTime();
-                    const response = await fetch(`${entry.path}?t=${timestamp}`);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const text = await response.text();
+                    // 直接用相对路径读取，因为文件就在同一个仓库里
+                    const res = await fetch(`${entry.path}?t=${Date.now()}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const text = await res.text();
 
                     modalBody.innerHTML = '';
                     const pre = document.createElement('pre');
@@ -708,16 +604,15 @@
                     pre.textContent = text;
                     modalBody.appendChild(pre);
                 } catch (err) {
-                    modalBody.innerHTML = '<div class="modal-error">无法加载文本内容</div>';
+                    modalBody.innerHTML = `<div class="modal-error">无法加载文本内容：${err.message}</div>`;
                 }
+
             } else if (entry.type === 'image') {
-                // 打开图片
                 openModal(entry.name, '🖼️', '<div class="modal-loading">正在加载图片…</div>');
 
-                const timestamp = new Date().getTime();
                 const img = document.createElement('img');
                 img.className = 'image-preview';
-                img.src = `${entry.path}?t=${timestamp}`;
+                img.src = `${entry.path}?t=${Date.now()}`;
                 img.alt = entry.name;
 
                 img.onload = () => {
@@ -730,7 +625,9 @@
             }
         }
 
-        // ---------- 弹窗控制 ----------
+        // ============================================================
+        // 弹窗控制
+        // ============================================================
         function openModal(fileName, icon, contentHtml) {
             modalFileName.textContent = fileName;
             modalTitle.querySelector('.file-icon').textContent = icon;
@@ -745,26 +642,22 @@
             modalBody.innerHTML = '';
         }
 
-        // 关闭按钮
         modalCloseBtn.addEventListener('click', closeModal);
 
-        // 点击遮罩关闭
         modalOverlay.addEventListener('click', (e) => {
             if (e.target === modalOverlay) closeModal();
         });
 
-        // ESC 键关闭
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
                 closeModal();
             }
         });
 
-        // ---------- 初始化 ----------
+        // ============================================================
+        // 初始化
+        // ============================================================
         loadFileManager();
-
-        // 暴露到全局，方便调试
-        window.loadFileManager = loadFileManager;
     </script>
 
 </body>
