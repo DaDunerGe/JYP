@@ -1,5 +1,17 @@
 [
   {
+    "name": "test",
+    "path": "test",
+    "type": "folder",
+    "children": [
+      {
+        "name": "test3.txt",
+        "path": "test/test3.txt",
+        "type": "text"
+      }
+    ]
+  },
+  {
     "name": "test.txt",
     "path": "test.txt",
     "type": "text"
