@@ -22,6 +22,7 @@ jobs:
           const IMG = ['jpg','jpeg','png','gif','webp','svg','bmp','ico','avif'];
           const TXT = ['txt'];
           const IGNORE = ['node_modules','.git','.github','files.json'];
+          const ROOT = 'files';
 
           function scan(dir, rel) {
             const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -46,13 +47,16 @@ jobs:
             return result;
           }
 
-          fs.writeFileSync('files.json', JSON.stringify(scan('.', ''), null, 2));
+          // 确保 files 目录存在
+          if (!fs.existsSync(ROOT)) fs.mkdirSync(ROOT, { recursive: true });
+
+          fs.writeFileSync(path.join(ROOT, 'files.json'), JSON.stringify(scan(ROOT, ''), null, 2));
           "
 
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add files.json
+          git add files/files.json
           git diff --quiet && git diff --staged --quiet || git commit -m "chore: 自动更新文件清单"
           git push
