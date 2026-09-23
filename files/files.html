@@ -125,48 +125,49 @@
             background: rgba(20, 12, 24, 0.6);
             border: 1px solid rgba(116, 73, 128, 0.4);
             border-radius: 28px;
-            padding: 1.5rem;
+            padding: 1rem 1.5rem;
             box-shadow: 0 0 30px rgba(116, 73, 128, 0.12);
         }
 
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 1rem;
+        /* 改为一行一行显示 */
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .file-item {
-            background: rgba(116, 73, 128, 0.1);
-            border: 1px solid rgba(116, 73, 128, 0.3);
-            border-radius: 18px;
-            padding: 1.2rem 0.8rem;
-            text-align: center;
+            background: rgba(116, 73, 128, 0.08);
+            border: 1px solid rgba(116, 73, 128, 0.25);
+            border-radius: 14px;
+            padding: 0.8rem 1.2rem;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 0.6rem;
+            gap: 1rem;
             word-break: break-word;
         }
 
         .file-item:hover {
             background: rgba(116, 73, 128, 0.25);
             border-color: rgba(116, 73, 128, 0.8);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(116, 73, 128, 0.3);
+            transform: translateX(4px);
+            box-shadow: 0 4px 15px rgba(116, 73, 128, 0.3);
         }
 
         .file-item .file-icon {
-            font-size: 2.2rem;
+            font-size: 1.6rem;
             line-height: 1;
+            flex-shrink: 0;
             filter: drop-shadow(0 0 8px rgba(116, 73, 128, 0.6));
         }
 
         .file-item .file-name {
-            font-size: 0.85rem;
+            font-size: 0.95rem;
             color: #d5c2dd;
             word-break: break-all;
+            flex: 1;
         }
 
         .file-item.is-folder .file-icon {
@@ -295,40 +296,41 @@
             border: 1px solid rgba(116, 73, 128, 0.4);
         }
 
-        /* 弹窗内文件夹列表 */
+        /* 弹窗内文件夹列表 —— 也改为一行一行 */
         .modal-body .inner-file-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .modal-body .inner-file-item {
-            background: rgba(116, 73, 128, 0.1);
-            border: 1px solid rgba(116, 73, 128, 0.3);
-            border-radius: 14px;
-            padding: 1rem 0.6rem;
-            text-align: center;
+            background: rgba(116, 73, 128, 0.08);
+            border: 1px solid rgba(116, 73, 128, 0.25);
+            border-radius: 12px;
+            padding: 0.7rem 1rem;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1rem;
             word-break: break-word;
         }
 
         .modal-body .inner-file-item:hover {
             background: rgba(116, 73, 128, 0.25);
             border-color: rgba(116, 73, 128, 0.8);
+            transform: translateX(4px);
         }
 
         .modal-body .inner-file-item .file-icon {
-            font-size: 1.8rem;
+            font-size: 1.4rem;
+            flex-shrink: 0;
         }
 
         .modal-body .inner-file-item .file-name {
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             color: #d5c2dd;
+            flex: 1;
         }
 
         .modal-loading {
@@ -373,16 +375,18 @@
             .main-content {
                 padding: 1.8rem 1rem;
             }
-            .file-grid {
-                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-                gap: 0.7rem;
+            .file-manager {
+                padding: 0.8rem 1rem;
             }
             .file-item {
-                padding: 1rem 0.5rem;
-                border-radius: 14px;
+                padding: 0.7rem 1rem;
+                border-radius: 12px;
             }
             .file-item .file-icon {
-                font-size: 1.8rem;
+                font-size: 1.4rem;
+            }
+            .file-item .file-name {
+                font-size: 0.9rem;
             }
             .modal {
                 border-radius: 24px;
@@ -415,7 +419,7 @@
         <p class="page-subtitle">点击任意文件查看内容 · 支持文件夹、TXT 文档与图片</p>
 
         <div class="file-manager">
-            <div id="fileGrid" class="file-grid">
+            <div id="fileGrid" class="file-list">
                 <div class="empty-message">正在读取目录…</div>
             </div>
         </div>
@@ -441,13 +445,12 @@
 
     <script>
         // ============================================================
-        // 配置区：请根据你的仓库修改以下三项
+        // 配置区
         // ============================================================
         const GITHUB_OWNER = '你的用户名';
         const GITHUB_REPO = '你的仓库名';
         const GITHUB_BRANCH = 'main';
 
-        // 要显示的根目录（相对于仓库根目录），留空表示仓库根目录
         const BASE_DIR = '';
 
         // ============================================================
@@ -460,9 +463,6 @@
         const modalBody = document.getElementById('modalBody');
         const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-        // ============================================================
-        // 读取 files.json 清单
-        // ============================================================
         let manifestCache = null;
 
         async function loadManifest() {
@@ -473,14 +473,11 @@
             return manifestCache;
         }
 
-        // 从清单中获取指定路径的子项
         function getEntriesFromManifest(manifest, targetPath) {
             if (!manifest) return [];
 
-            // 规范化路径
             let cleanPath = (targetPath || '').replace(/^\.?\//, '').replace(/\/$/, '');
 
-            // 如果设置了基础目录，需要去掉前缀
             if (BASE_DIR) {
                 const prefix = BASE_DIR.replace(/^\.?\//, '').replace(/\/$/, '');
                 if (cleanPath === prefix) cleanPath = '';
@@ -502,7 +499,7 @@
         }
 
         // ============================================================
-        // 渲染文件管理器主界面
+        // 渲染文件管理器主界面（一行一行）
         // ============================================================
         async function loadFileManager() {
             fileGrid.innerHTML = '<div class="empty-message">正在读取目录…</div>';
@@ -593,7 +590,6 @@
                 openModal(entry.name, '📄', '<div class="modal-loading">正在加载文本…</div>');
 
                 try {
-                    // 直接用相对路径读取，因为文件就在同一个仓库里
                     const res = await fetch(`${entry.path}?t=${Date.now()}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const text = await res.text();
