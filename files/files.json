@@ -3,5 +3,10 @@
     "name": "test.txt",
     "path": "test.txt",
     "type": "text"
+  },
+  {
+    "name": "test2.txt",
+    "path": "test2.txt",
+    "type": "text"
   }
 ]
