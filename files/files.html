@@ -441,10 +441,14 @@
 
     <script>
         // ============================================================
-        // 配置区
+        // 配置区：请根据你的仓库修改以下三项
         // ============================================================
-        const MANIFEST_URL = 'files/files.json';
-        const FILE_BASE = 'files/';
+        const GITHUB_OWNER = '你的用户名';
+        const GITHUB_REPO = '你的仓库名';
+        const GITHUB_BRANCH = 'main';
+
+        // 要显示的根目录（相对于仓库根目录），留空表示仓库根目录
+        const BASE_DIR = '';
 
         // ============================================================
         // 全局状态
@@ -456,87 +460,32 @@
         const modalBody = document.getElementById('modalBody');
         const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-        // 清单缓存（避免重复请求）
+        // ============================================================
+        // 读取 files.json 清单
+        // ============================================================
         let manifestCache = null;
-        let manifestLoading = false;
-        let manifestError = null;
 
-        // ============================================================
-        // 读取清单
-        // ============================================================
-        async function loadManifest(forceRefresh = false) {
-            // 如果已有缓存且不强制刷新，直接返回
-            if (manifestCache && !forceRefresh) return manifestCache;
-
-            // 防止并发重复请求
-            if (manifestLoading) {
-                // 等待当前加载完成
-                while (manifestLoading) {
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                }
-                if (manifestCache) return manifestCache;
-                throw new Error(manifestError || '加载失败');
-            }
-
-            manifestLoading = true;
-            manifestError = null;
-
-            try {
-                const url = `${MANIFEST_URL}?t=${Date.now()}`;
-                const res = await fetch(url, {
-                    cache: 'no-store',
-                    headers: { 'Accept': 'application/json' }
-                });
-
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status} - 无法加载 ${MANIFEST_URL}`);
-                }
-
-                const text = await res.text();
-
-                // 检查返回内容是否为空
-                if (!text || !text.trim()) {
-                    throw new Error('files.json 内容为空');
-                }
-
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    throw new Error('files.json 格式错误，不是有效的 JSON');
-                }
-
-                // 确保是数组
-                if (!Array.isArray(data)) {
-                    // 如果返回的是对象（比如错误信息），尝试兼容
-                    if (data && Array.isArray(data.children)) {
-                        data = data.children;
-                    } else {
-                        throw new Error('files.json 格式不正确，期望数组');
-                    }
-                }
-
-                manifestCache = data;
-                manifestLoading = false;
-                return manifestCache;
-
-            } catch (err) {
-                manifestLoading = false;
-                manifestError = err.message;
-                manifestCache = null;
-                throw err;
-            }
+        async function loadManifest() {
+            if (manifestCache) return manifestCache;
+            const res = await fetch(`files.json?t=${Date.now()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            manifestCache = await res.json();
+            return manifestCache;
         }
 
-        // ============================================================
         // 从清单中获取指定路径的子项
-        // 清单里的 path 是相对于 files/ 目录的
-        // ============================================================
         function getEntriesFromManifest(manifest, targetPath) {
             if (!manifest) return [];
 
-            // 规范化路径：去掉开头的 ./ 或 /
+            // 规范化路径
             let cleanPath = (targetPath || '').replace(/^\.?\//, '').replace(/\/$/, '');
+
+            // 如果设置了基础目录，需要去掉前缀
+            if (BASE_DIR) {
+                const prefix = BASE_DIR.replace(/^\.?\//, '').replace(/\/$/, '');
+                if (cleanPath === prefix) cleanPath = '';
+                else if (cleanPath.startsWith(prefix + '/')) cleanPath = cleanPath.slice(prefix.length + 1);
+            }
 
             if (!cleanPath) return manifest;
 
@@ -553,16 +502,6 @@
         }
 
         // ============================================================
-        // 构建文件访问 URL
-        // 清单里的 path 是相对于 files/ 目录的，所以前面要加 files/
-        // ============================================================
-        function buildFileUrl(relativePath) {
-            // 去掉开头的 /
-            let cleanPath = (relativePath || '').replace(/^\.?\//, '');
-            return `${FILE_BASE}${cleanPath}`;
-        }
-
-        // ============================================================
         // 渲染文件管理器主界面
         // ============================================================
         async function loadFileManager() {
@@ -570,10 +509,10 @@
 
             try {
                 const manifest = await loadManifest();
-                const entries = getEntriesFromManifest(manifest, '');
+                const entries = getEntriesFromManifest(manifest, BASE_DIR);
 
                 if (entries.length === 0) {
-                    fileGrid.innerHTML = '<div class="empty-message">files/ 目录下没有可显示的文件（文件夹 / TXT / 图片）</div>';
+                    fileGrid.innerHTML = '<div class="empty-message">此目录下没有可显示的文件（文件夹 / TXT / 图片）</div>';
                     return;
                 }
 
@@ -598,29 +537,9 @@
                     fileGrid.appendChild(item);
                 }
             } catch (err) {
-                fileGrid.innerHTML = `
-                    <div class="empty-message">
-                        ⚠️ 读取失败：${err.message}<br>
-                        <span style="font-size:0.85rem;display:block;margin-top:0.5rem;">
-                            请确认：<br>
-                            1. files/files.json 已由 GitHub Actions 生成<br>
-                            2. 仓库已启用 GitHub Pages<br>
-                            3. 等待 Actions 运行完成（约 30 秒）
-                        </span>
-                        <button onclick="retryLoad()" style="margin-top:1rem;padding:0.5rem 1.2rem;background:#744980;color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;">
-                            重试
-                        </button>
-                    </div>
-                `;
+                fileGrid.innerHTML = `<div class="empty-message">⚠️ 读取失败：${err.message}<br><span style="font-size:0.85rem;">请确认 files.json 已由 GitHub Actions 生成</span></div>`;
             }
         }
-
-        // 重试加载
-        window.retryLoad = function() {
-            manifestCache = null;
-            manifestError = null;
-            loadFileManager();
-        };
 
         // ============================================================
         // 处理文件点击
@@ -674,8 +593,8 @@
                 openModal(entry.name, '📄', '<div class="modal-loading">正在加载文本…</div>');
 
                 try {
-                    const fileUrl = buildFileUrl(entry.path);
-                    const res = await fetch(`${fileUrl}?t=${Date.now()}`, { cache: 'no-store' });
+                    // 直接用相对路径读取，因为文件就在同一个仓库里
+                    const res = await fetch(`${entry.path}?t=${Date.now()}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const text = await res.text();
 
@@ -691,10 +610,9 @@
             } else if (entry.type === 'image') {
                 openModal(entry.name, '🖼️', '<div class="modal-loading">正在加载图片…</div>');
 
-                const fileUrl = buildFileUrl(entry.path);
                 const img = document.createElement('img');
                 img.className = 'image-preview';
-                img.src = `${fileUrl}?t=${Date.now()}`;
+                img.src = `${entry.path}?t=${Date.now()}`;
                 img.alt = entry.name;
 
                 img.onload = () => {
@@ -702,7 +620,7 @@
                     modalBody.appendChild(img);
                 };
                 img.onerror = () => {
-                    modalBody.innerHTML = `<div class="modal-error">无法加载图片<br><span style="font-size:0.85rem;">${fileUrl}</span></div>`;
+                    modalBody.innerHTML = '<div class="modal-error">无法加载图片</div>';
                 };
             }
         }
