@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>墨阁 · 投稿</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* 全局重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             background-color: #000000;
@@ -17,6 +22,7 @@
             flex-direction: column;
         }
 
+        /* ===== 顶部栏 ===== */
         .top-bar {
             width: 100%;
             background: rgba(20, 12, 24, 0.9);
@@ -86,8 +92,12 @@
             box-shadow: 0 0 12px rgba(116, 73, 128, 0.6);
         }
 
-        .submit-link .icon { font-size: 1.2rem; line-height: 1; }
+        .submit-link .icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
 
+        /* ===== 主内容区域 ===== */
         .main-content {
             flex: 1;
             max-width: 1000px;
@@ -110,6 +120,7 @@
             margin-bottom: 2rem;
         }
 
+        /* ===== 文件管理器 ===== */
         .file-manager {
             background: rgba(20, 12, 24, 0.6);
             border: 1px solid rgba(116, 73, 128, 0.4);
@@ -158,7 +169,9 @@
             word-break: break-all;
         }
 
-        .file-item.is-folder .file-icon { color: #b48bc2; }
+        .file-item.is-folder .file-icon {
+            color: #b48bc2;
+        }
 
         .empty-message {
             text-align: center;
@@ -167,6 +180,7 @@
             padding: 2rem 0;
         }
 
+        /* ===== 弹窗 ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -179,7 +193,9 @@
             padding: 1.5rem;
         }
 
-        .modal-overlay.active { display: flex; }
+        .modal-overlay.active {
+            display: flex;
+        }
 
         .modal {
             background: rgba(20, 12, 24, 0.98);
@@ -254,6 +270,7 @@
             flex: 1;
         }
 
+        /* 文本内容 */
         .modal-body pre.text-content {
             white-space: pre-wrap;
             word-break: break-word;
@@ -267,6 +284,7 @@
             border: 1px solid rgba(116, 73, 128, 0.2);
         }
 
+        /* 图片预览 */
         .modal-body .image-preview {
             max-width: 100%;
             max-height: 60vh;
@@ -277,6 +295,7 @@
             border: 1px solid rgba(116, 73, 128, 0.4);
         }
 
+        /* 弹窗内文件夹列表 */
         .modal-body .inner-file-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -303,7 +322,9 @@
             border-color: rgba(116, 73, 128, 0.8);
         }
 
-        .modal-body .inner-file-item .file-icon { font-size: 1.8rem; }
+        .modal-body .inner-file-item .file-icon {
+            font-size: 1.8rem;
+        }
 
         .modal-body .inner-file-item .file-name {
             font-size: 0.8rem;
@@ -324,6 +345,7 @@
             padding: 2rem 0;
         }
 
+        /* 底部装饰线 */
         .footer-deco {
             margin-top: 3rem;
             width: 100%;
@@ -333,24 +355,53 @@
             border-radius: 2px;
         }
 
+        /* 响应式 */
         @media (max-width: 600px) {
-            .top-bar { padding: 0.8rem 1.2rem; }
-            .brand { font-size: 1.4rem; }
-            .submit-link { padding: 0.5rem 1.1rem; font-size: 0.9rem; }
-            .submit-link .icon { font-size: 1rem; }
-            .main-content { padding: 1.8rem 1rem; }
-            .file-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.7rem; }
-            .file-item { padding: 1rem 0.5rem; border-radius: 14px; }
-            .file-item .file-icon { font-size: 1.8rem; }
-            .modal { border-radius: 24px; }
-            .modal-header { padding: 1.1rem 1.2rem; }
-            .modal-body { padding: 1.2rem; }
-            .modal-title { font-size: 1rem; }
+            .top-bar {
+                padding: 0.8rem 1.2rem;
+            }
+            .brand {
+                font-size: 1.4rem;
+            }
+            .submit-link {
+                padding: 0.5rem 1.1rem;
+                font-size: 0.9rem;
+            }
+            .submit-link .icon {
+                font-size: 1rem;
+            }
+            .main-content {
+                padding: 1.8rem 1rem;
+            }
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+                gap: 0.7rem;
+            }
+            .file-item {
+                padding: 1rem 0.5rem;
+                border-radius: 14px;
+            }
+            .file-item .file-icon {
+                font-size: 1.8rem;
+            }
+            .modal {
+                border-radius: 24px;
+            }
+            .modal-header {
+                padding: 1.1rem 1.2rem;
+            }
+            .modal-body {
+                padding: 1.2rem;
+            }
+            .modal-title {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- 顶部栏 -->
     <header class="top-bar">
         <a href="index.html" class="brand">墨阁</a>
         <a href="投稿.html" class="submit-link">
@@ -358,6 +409,7 @@
         </a>
     </header>
 
+    <!-- 主内容 -->
     <main class="main-content">
         <h2 class="page-title">投稿 · 文件浏览</h2>
         <p class="page-subtitle">点击任意文件查看内容 · 支持文件夹、TXT 文档与图片</p>
@@ -371,6 +423,7 @@
         <div class="footer-deco"></div>
     </main>
 
+    <!-- 弹窗 -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" role="dialog" aria-modal="true">
             <div class="modal-header">
@@ -380,7 +433,9 @@
                 </div>
                 <button class="modal-close" id="modalCloseBtn" aria-label="关闭">✕</button>
             </div>
-            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-body" id="modalBody">
+                <!-- 内容动态插入 -->
+            </div>
         </div>
     </div>
 
@@ -388,8 +443,8 @@
         // ============================================================
         // 配置区
         // ============================================================
-        // 清单文件路径（相对于网页）
         const MANIFEST_URL = 'files/files.json';
+        const FILE_BASE = 'files/';
 
         // ============================================================
         // 全局状态
@@ -401,6 +456,7 @@
         const modalBody = document.getElementById('modalBody');
         const modalCloseBtn = document.getElementById('modalCloseBtn');
 
+        // 清单缓存（避免重复请求）
         let manifestCache = null;
         let manifestLoading = false;
         let manifestError = null;
@@ -409,9 +465,12 @@
         // 读取清单
         // ============================================================
         async function loadManifest(forceRefresh = false) {
+            // 如果已有缓存且不强制刷新，直接返回
             if (manifestCache && !forceRefresh) return manifestCache;
 
+            // 防止并发重复请求
             if (manifestLoading) {
+                // 等待当前加载完成
                 while (manifestLoading) {
                     await new Promise(resolve => setTimeout(resolve, 50));
                 }
@@ -435,6 +494,7 @@
 
                 const text = await res.text();
 
+                // 检查返回内容是否为空
                 if (!text || !text.trim()) {
                     throw new Error('files.json 内容为空');
                 }
@@ -446,7 +506,9 @@
                     throw new Error('files.json 格式错误，不是有效的 JSON');
                 }
 
+                // 确保是数组
                 if (!Array.isArray(data)) {
+                    // 如果返回的是对象（比如错误信息），尝试兼容
                     if (data && Array.isArray(data.children)) {
                         data = data.children;
                     } else {
@@ -468,10 +530,12 @@
 
         // ============================================================
         // 从清单中获取指定路径的子项
+        // 清单里的 path 是相对于 files/ 目录的
         // ============================================================
         function getEntriesFromManifest(manifest, targetPath) {
             if (!manifest) return [];
 
+            // 规范化路径：去掉开头的 ./ 或 /
             let cleanPath = (targetPath || '').replace(/^\.?\//, '').replace(/\/$/, '');
 
             if (!cleanPath) return manifest;
@@ -486,6 +550,16 @@
             }
 
             return current;
+        }
+
+        // ============================================================
+        // 构建文件访问 URL
+        // 清单里的 path 是相对于 files/ 目录的，所以前面要加 files/
+        // ============================================================
+        function buildFileUrl(relativePath) {
+            // 去掉开头的 /
+            let cleanPath = (relativePath || '').replace(/^\.?\//, '');
+            return `${FILE_BASE}${cleanPath}`;
         }
 
         // ============================================================
@@ -541,6 +615,7 @@
             }
         }
 
+        // 重试加载
         window.retryLoad = function() {
             manifestCache = null;
             manifestError = null;
@@ -549,7 +624,6 @@
 
         // ============================================================
         // 处理文件点击
-        // 直接用 entry.path，因为它已经是相对于网页根目录的完整路径
         // ============================================================
         async function handleFileClick(entry) {
             if (entry.type === 'folder') {
@@ -600,7 +674,8 @@
                 openModal(entry.name, '📄', '<div class="modal-loading">正在加载文本…</div>');
 
                 try {
-                    const res = await fetch(`${entry.path}?t=${Date.now()}`, { cache: 'no-store' });
+                    const fileUrl = buildFileUrl(entry.path);
+                    const res = await fetch(`${fileUrl}?t=${Date.now()}`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const text = await res.text();
 
@@ -610,15 +685,16 @@
                     pre.textContent = text;
                     modalBody.appendChild(pre);
                 } catch (err) {
-                    modalBody.innerHTML = `<div class="modal-error">无法加载文本内容：${err.message}<br><span style="font-size:0.85rem;">${entry.path}</span></div>`;
+                    modalBody.innerHTML = `<div class="modal-error">无法加载文本内容：${err.message}</div>`;
                 }
 
             } else if (entry.type === 'image') {
                 openModal(entry.name, '🖼️', '<div class="modal-loading">正在加载图片…</div>');
 
+                const fileUrl = buildFileUrl(entry.path);
                 const img = document.createElement('img');
                 img.className = 'image-preview';
-                img.src = `${entry.path}?t=${Date.now()}`;
+                img.src = `${fileUrl}?t=${Date.now()}`;
                 img.alt = entry.name;
 
                 img.onload = () => {
@@ -626,7 +702,7 @@
                     modalBody.appendChild(img);
                 };
                 img.onerror = () => {
-                    modalBody.innerHTML = `<div class="modal-error">无法加载图片<br><span style="font-size:0.85rem;">${entry.path}</span></div>`;
+                    modalBody.innerHTML = `<div class="modal-error">无法加载图片<br><span style="font-size:0.85rem;">${fileUrl}</span></div>`;
                 };
             }
         }
