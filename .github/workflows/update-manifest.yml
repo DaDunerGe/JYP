@@ -1,0 +1,58 @@
+name: Update file manifest
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'files.json'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate manifest
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const IMG = ['jpg','jpeg','png','gif','webp','svg','bmp','ico','avif'];
+          const TXT = ['txt'];
+          const IGNORE = ['node_modules','.git','.github','files.json'];
+
+          function scan(dir, rel) {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            const result = [];
+            for (const e of entries) {
+              if (e.name.startsWith('.') || IGNORE.includes(e.name)) continue;
+              const full = path.join(dir, e.name);
+              const r = rel ? rel + '/' + e.name : e.name;
+              if (e.isDirectory()) {
+                result.push({ name: e.name, path: r, type: 'folder', children: scan(full, r) });
+              } else {
+                const ext = e.name.split('.').pop().toLowerCase();
+                if (TXT.includes(ext)) result.push({ name: e.name, path: r, type: 'text' });
+                else if (IMG.includes(ext)) result.push({ name: e.name, path: r, type: 'image' });
+              }
+            }
+            result.sort((a, b) => {
+              const order = { folder: 0, text: 1, image: 2 };
+              if (order[a.type] !== order[b.type]) return order[a.type] - order[b.type];
+              return a.name.localeCompare(b.name);
+            });
+            return result;
+          }
+
+          fs.writeFileSync('files.json', JSON.stringify(scan('.', ''), null, 2));
+          "
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add files.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: 自动更新文件清单"
+          git push
