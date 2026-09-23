@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>墨阁 · 投稿</title>
+    <style>
+        /* 全局重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            color: #e0e0e0;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== 顶部栏（与主页完全一致）===== */
+        .top-bar {
+            width: 100%;
+            background: rgba(20, 12, 24, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(116, 73, 128, 0.4);
+            padding: 0.9rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(116, 73, 128, 0.15);
+        }
+
+        .brand {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            text-shadow: 0 0 18px rgba(116, 73, 128, 0.6);
+            position: relative;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+
+        .brand::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #744980;
+            border-radius: 3px;
+            box-shadow: 0 0 10px #744980;
+        }
+
+        .submit-link {
+            background: #744980;
+            color: #ffffff;
+            border: none;
+            border-radius: 40px;
+            padding: 0.6rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 0 20px rgba(116, 73, 128, 0.4);
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+
+        .submit-link:hover {
+            background: #8c5a9e;
+            box-shadow: 0 0 30px rgba(116, 73, 128, 0.8);
+            transform: translateY(-1px);
+        }
+
+        .submit-link:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 12px rgba(116, 73, 128, 0.6);
+        }
+
+        .submit-link .icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        /* ===== 主内容区域 ===== */
+        .main-content {
+            flex: 1;
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.4rem;
+            text-shadow: 0 0 12px rgba(116, 73, 128, 0.4);
+        }
+
+        .page-subtitle {
+            font-size: 0.95rem;
+            color: #9a7ba8;
+            margin-bottom: 2rem;
+        }
+
+        /* ===== 文件管理器 ===== */
+        .file-manager {
+            background: rgba(20, 12, 24, 0.6);
+            border: 1px solid rgba(116, 73, 128, 0.4);
+            border-radius: 28px;
+            padding: 1.5rem;
+            box-shadow: 0 0 30px rgba(116, 73, 128, 0.12);
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .file-item {
+            background: rgba(116, 73, 128, 0.1);
+            border: 1px solid rgba(116, 73, 128, 0.3);
+            border-radius: 18px;
+            padding: 1.2rem 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            word-break: break-word;
+        }
+
+        .file-item:hover {
+            background: rgba(116, 73, 128, 0.25);
+            border-color: rgba(116, 73, 128, 0.8);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(116, 73, 128, 0.3);
+        }
+
+        .file-item .file-icon {
+            font-size: 2.2rem;
+            line-height: 1;
+            filter: drop-shadow(0 0 8px rgba(116, 73, 128, 0.6));
+        }
+
+        .file-item .file-name {
+            font-size: 0.85rem;
+            color: #d5c2dd;
+            word-break: break-all;
+        }
+
+        .file-item.is-folder .file-icon {
+            color: #b48bc2;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #8a6d97;
+            font-style: italic;
+            padding: 2rem 0;
+        }
+
+        /* ===== 弹窗 ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: rgba(20, 12, 24, 0.98);
+            border: 1px solid rgba(116, 73, 128, 0.7);
+            border-radius: 32px;
+            width: 100%;
+            max-width: 860px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 30px 60px -12px rgba(116, 73, 128, 0.5), 0 0 0 1px rgba(116, 73, 128, 0.3) inset;
+            animation: modalIn 0.25s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.96) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.4rem 1.8rem;
+            border-bottom: 1px solid rgba(116, 73, 128, 0.3);
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            word-break: break-all;
+        }
+
+        .modal-title .file-icon {
+            font-size: 1.4rem;
+            filter: drop-shadow(0 0 6px rgba(116, 73, 128, 0.7));
+        }
+
+        .modal-close {
+            background: rgba(116, 73, 128, 0.2);
+            border: 1px solid rgba(116, 73, 128, 0.5);
+            color: #e0c8eb;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.3rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .modal-close:hover {
+            background: #744980;
+            color: #fff;
+            box-shadow: 0 0 18px rgba(116, 73, 128, 0.7);
+        }
+
+        .modal-body {
+            padding: 1.8rem;
+            overflow-y: auto;
+            color: #e0d4e8;
+            font-size: 1rem;
+            flex: 1;
+        }
+
+        /* 文本内容 */
+        .modal-body pre.text-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.92rem;
+            line-height: 1.7;
+            color: #e0d4e8;
+            background: rgba(116, 73, 128, 0.08);
+            padding: 1.2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(116, 73, 128, 0.2);
+        }
+
+        /* 图片预览 */
+        .modal-body .image-preview {
+            max-width: 100%;
+            max-height: 60vh;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 0 30px rgba(116, 73, 128, 0.4);
+            border: 1px solid rgba(116, 73, 128, 0.4);
+        }
+
+        /* 弹窗内文件夹列表 */
+        .modal-body .inner-file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.8rem;
+        }
+
+        .modal-body .inner-file-item {
+            background: rgba(116, 73, 128, 0.1);
+            border: 1px solid rgba(116, 73, 128, 0.3);
+            border-radius: 14px;
+            padding: 1rem 0.6rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            word-break: break-word;
+        }
+
+        .modal-body .inner-file-item:hover {
+            background: rgba(116, 73, 128, 0.25);
+            border-color: rgba(116, 73, 128, 0.8);
+        }
+
+        .modal-body .inner-file-item .file-icon {
+            font-size: 1.8rem;
+        }
+
+        .modal-body .inner-file-item .file-name {
+            font-size: 0.8rem;
+            color: #d5c2dd;
+        }
+
+        .modal-loading {
+            text-align: center;
+            color: #9a7ba8;
+            font-style: italic;
+            padding: 2rem 0;
+        }
+
+        .modal-error {
+            text-align: center;
+            color: #c98da0;
+            font-style: italic;
+            padding: 2rem 0;
+        }
+
+        /* 底部装饰线 */
+        .footer-deco {
+            margin-top: 3rem;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #744980, #b48bc2, #744980, transparent);
+            opacity: 0.6;
+            border-radius: 2px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .top-bar {
+                padding: 0.8rem 1.2rem;
+            }
+            .brand {
+                font-size: 1.4rem;
+            }
+            .submit-link {
+                padding: 0.5rem 1.1rem;
+                font-size: 0.9rem;
+            }
+            .submit-link .icon {
+                font-size: 1rem;
+            }
+            .main-content {
+                padding: 1.8rem 1rem;
+            }
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+                gap: 0.7rem;
+            }
+            .file-item {
+                padding: 1rem 0.5rem;
+                border-radius: 14px;
+            }
+            .file-item .file-icon {
+                font-size: 1.8rem;
+            }
+            .modal {
+                border-radius: 24px;
+            }
+            .modal-header {
+                padding: 1.1rem 1.2rem;
+            }
+            .modal-body {
+                padding: 1.2rem;
+            }
+            .modal-title {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部栏（与主页一致） -->
+    <header class="top-bar">
+        <a href="index.html" class="brand">墨阁</a>
+        <a href="投稿.html" class="submit-link">
+            <span class="icon">✍️</span> 投稿
+        </a>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+        <h2 class="page-title">投稿 · 文件浏览</h2>
+        <p class="page-subtitle">点击任意文件查看内容 · 支持文件夹、TXT 文档与图片</p>
+
+        <div class="file-manager">
+            <div id="fileGrid" class="file-grid">
+                <div class="empty-message">正在读取目录…</div>
+            </div>
+        </div>
+
+        <div class="footer-deco"></div>
+    </main>
+
+    <!-- 弹窗 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">
+                    <span class="file-icon">📄</span>
+                    <span id="modalFileName">文件名</span>
+                </div>
+                <button class="modal-close" id="modalCloseBtn" aria-label="关闭">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- 内容动态插入 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------- 配置：当前目录相对路径（根目录为 ''）----------
+        const BASE_PATH = '';
+
+        // ---------- 全局状态 ----------
+        const fileGrid = document.getElementById('fileGrid');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalFileName = document.getElementById('modalFileName');
+        const modalBody = document.getElementById('modalBody');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+        // 支持的图片扩展名
+        const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+        // 支持的文本扩展名（只显示 txt）
+        const TEXT_EXTENSIONS = ['txt'];
+
+        // ---------- 工具函数 ----------
+        function getExtension(filename) {
+            const parts = filename.split('.');
+            if (parts.length < 2) return '';
+            return parts.pop().toLowerCase();
+        }
+
+        function isImage(filename) {
+            return IMAGE_EXTENSIONS.includes(getExtension(filename));
+        }
+
+        function isText(filename) {
+            return TEXT_EXTENSIONS.includes(getExtension(filename));
+        }
+
+        function isFolder(entry) {
+            // 目录没有扩展名，或者以 / 结尾
+            return entry.endsWith('/') || (!entry.includes('.') && !isImage(entry) && !isText(entry));
+        }
+
+        // 根据文件名返回图标
+        function getFileIcon(name) {
+            if (isImage(name)) return '🖼️';
+            if (isText(name)) return '📄';
+            if (isFolder(name)) return '📁';
+            return '📄';
+        }
+
+        // 在网格中渲染文件项
+        function renderFileItem(container, name, path, onClick) {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            if (isFolder(name)) item.classList.add('is-folder');
+
+            const icon = document.createElement('div');
+            icon.className = 'file-icon';
+            icon.textContent = getFileIcon(name);
+
+            const label = document.createElement('div');
+            label.className = 'file-name';
+            label.textContent = name;
+
+            item.appendChild(icon);
+            item.appendChild(label);
+            item.addEventListener('click', () => onClick(path, name));
+
+            container.appendChild(item);
+        }
+
+        // ---------- 核心：获取目录内容（使用 fetch 探测的方式）----------
+        // 由于纯静态页面无法列出目录，我们采用两种策略：
+        // 1. 如果服务器支持目录索引（例如 GitHub Pages 会返回 HTML 目录列表），可以解析 HTML 获取文件列表。
+        // 2. 更可靠的方式：使用已知文件清单（但我们需要自动获取）。
+        // 
+        // 本方案采用解析目录索引 HTML 的方式，因为 GitHub Pages 默认开启目录索引（返回 HTML 页面）。
+        // 如果返回的不是 HTML 目录列表（例如 404 或 JSON），则回退到预设的常见文件。
+        //
+        // 为了演示和实用性，这里会尝试 fetch 当前目录，解析返回的 HTML 中的链接。
+        // 对于本地开发环境（如 VS Code Live Server），也会返回目录列表。
+        // 如果无法解析，则显示提示。
+
+        async function fetchDirectory(path) {
+            // 确保路径以 / 结尾
+            let dirPath = path;
+            if (dirPath && !dirPath.endsWith('/')) dirPath += '/';
+            if (dirPath.startsWith('/')) dirPath = dirPath.substring(1);
+
+            const url = dirPath || './';
+
+            try {
+                const response = await fetch(url, { method: 'GET' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const contentType = response.headers.get('content-type') || '';
+                // 如果不是 HTML，无法解析目录
+                if (!contentType.includes('text/html')) {
+                    throw new Error('非 HTML 目录列表');
+                }
+
+                const html = await response.text();
+
+                // 解析 HTML 中的链接
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const links = Array.from(doc.querySelectorAll('a'));
+                const entries = [];
+
+                for (const link of links) {
+                    let href = link.getAttribute('href');
+                    if (!href) continue;
+
+                    // 去除 URL 参数和锚点
+                    href = href.split('?')[0].split('#')[0];
+
+                    // 跳过父目录链接
+                    if (href === '../' || href === '..' || href === './' || href === '.' || href === '/') continue;
+                    // 跳过绝对路径外链
+                    if (href.startsWith('http://') || href.startsWith('https://')) continue;
+                    // 跳过空链接
+                    if (!href || href === '') continue;
+
+                    // 获取文件名
+                    let name = href;
+                    // 如果 href 是相对路径，保留完整路径
+                    // 如果是当前目录下的文件，href 可能只是文件名
+                    // 如果是子目录，可能以 / 结尾
+                    const displayName = name.replace(/\/$/, '').split('/').pop();
+                    if (!displayName) continue;
+
+                    // 过滤掉隐藏文件（以 . 开头）和特殊文件
+                    if (displayName.startsWith('.')) continue;
+
+                    // 构建完整路径
+                    let fullPath = dirPath + name;
+                    // 规范化路径
+                    fullPath = fullPath.replace(/\/+/g, '/');
+
+                    // 判断是目录还是文件：目录通常以 / 结尾
+                    const isDir = name.endsWith('/');
+
+                    // 只保留：文件夹、txt、图片
+                    if (isDir) {
+                        entries.push({ name: displayName, path: fullPath, type: 'folder' });
+                    } else if (isText(displayName)) {
+                        entries.push({ name: displayName, path: fullPath, type: 'text' });
+                    } else if (isImage(displayName)) {
+                        entries.push({ name: displayName, path: fullPath, type: 'image' });
+                    }
+                }
+
+                // 去重（按路径）
+                const seen = new Set();
+                const unique = entries.filter(e => {
+                    if (seen.has(e.path)) return false;
+                    seen.add(e.path);
+                    return true;
+                });
+
+                // 排序：文件夹在前，然后文本，然后图片
+                unique.sort((a, b) => {
+                    const order = { folder: 0, text: 1, image: 2 };
+                    if (order[a.type] !== order[b.type]) return order[a.type] - order[b.type];
+                    return a.name.localeCompare(b.name);
+                });
+
+                return unique;
+
+            } catch (err) {
+                console.warn('无法解析目录，可能服务器不支持目录索引:', err);
+                // 回退：尝试直接读取已知的常见文件？不，这里返回空并提示
+                throw err;
+            }
+        }
+
+        // ---------- 渲染文件管理器主界面 ----------
+        async function loadFileManager() {
+            fileGrid.innerHTML = '<div class="empty-message">正在读取目录…</div>';
+
+            try {
+                const entries = await fetchDirectory(BASE_PATH);
+
+                if (entries.length === 0) {
+                    fileGrid.innerHTML = '<div class="empty-message">此目录下没有可显示的文件（文件夹 / TXT / 图片）</div>';
+                    return;
+                }
+
+                fileGrid.innerHTML = '';
+                for (const entry of entries) {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    if (entry.type === 'folder') item.classList.add('is-folder');
+
+                    const icon = document.createElement('div');
+                    icon.className = 'file-icon';
+                    icon.textContent = entry.type === 'folder' ? '📁' : (entry.type === 'image' ? '🖼️' : '📄');
+
+                    const label = document.createElement('div');
+                    label.className = 'file-name';
+                    label.textContent = entry.name;
+
+                    item.appendChild(icon);
+                    item.appendChild(label);
+                    item.addEventListener('click', () => handleFileClick(entry));
+
+                    fileGrid.appendChild(item);
+                }
+            } catch (err) {
+                fileGrid.innerHTML = '<div class="empty-message">⚠️ 无法读取目录列表<br><span style="font-size:0.85rem;">请确保服务器开启了目录索引，或使用支持目录列表的环境</span></div>';
+            }
+        }
+
+        // ---------- 处理文件点击 ----------
+        async function handleFileClick(entry) {
+            if (entry.type === 'folder') {
+                // 打开文件夹，显示内部文件
+                openModal(entry.name, '📁', '<div class="modal-loading">正在读取文件夹…</div>');
+
+                try {
+                    const innerEntries = await fetchDirectory(entry.path);
+                    if (innerEntries.length === 0) {
+                        modalBody.innerHTML = '<div class="empty-message">此文件夹为空或没有可显示的文件</div>';
+                        return;
+                    }
+
+                    const listDiv = document.createElement('div');
+                    listDiv.className = 'inner-file-list';
+
+                    for (const inner of innerEntries) {
+                        const innerItem = document.createElement('div');
+                        innerItem.className = 'inner-file-item';
+
+                        const icon = document.createElement('div');
+                        icon.className = 'file-icon';
+                        icon.textContent = inner.type === 'folder' ? '📁' : (inner.type === 'image' ? '🖼️' : '📄');
+
+                        const nameDiv = document.createElement('div');
+                        nameDiv.className = 'file-name';
+                        nameDiv.textContent = inner.name;
+
+                        innerItem.appendChild(icon);
+                        innerItem.appendChild(nameDiv);
+                        innerItem.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            handleFileClick(inner);
+                        });
+
+                        listDiv.appendChild(innerItem);
+                    }
+
+                    modalBody.innerHTML = '';
+                    modalBody.appendChild(listDiv);
+
+                } catch (err) {
+                    modalBody.innerHTML = '<div class="modal-error">无法读取文件夹内容</div>';
+                }
+            } else if (entry.type === 'text') {
+                // 打开文本
+                openModal(entry.name, '📄', '<div class="modal-loading">正在加载文本…</div>');
+
+                try {
+                    const timestamp = new Date().getTime();
+                    const response = await fetch(`${entry.path}?t=${timestamp}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const text = await response.text();
+
+                    modalBody.innerHTML = '';
+                    const pre = document.createElement('pre');
+                    pre.className = 'text-content';
+                    pre.textContent = text;
+                    modalBody.appendChild(pre);
+                } catch (err) {
+                    modalBody.innerHTML = '<div class="modal-error">无法加载文本内容</div>';
+                }
+            } else if (entry.type === 'image') {
+                // 打开图片
+                openModal(entry.name, '🖼️', '<div class="modal-loading">正在加载图片…</div>');
+
+                const timestamp = new Date().getTime();
+                const img = document.createElement('img');
+                img.className = 'image-preview';
+                img.src = `${entry.path}?t=${timestamp}`;
+                img.alt = entry.name;
+
+                img.onload = () => {
+                    modalBody.innerHTML = '';
+                    modalBody.appendChild(img);
+                };
+                img.onerror = () => {
+                    modalBody.innerHTML = '<div class="modal-error">无法加载图片</div>';
+                };
+            }
+        }
+
+        // ---------- 弹窗控制 ----------
+        function openModal(fileName, icon, contentHtml) {
+            modalFileName.textContent = fileName;
+            modalTitle.querySelector('.file-icon').textContent = icon;
+            modalBody.innerHTML = contentHtml;
+            modalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            modalBody.innerHTML = '';
+        }
+
+        // 关闭按钮
+        modalCloseBtn.addEventListener('click', closeModal);
+
+        // 点击遮罩关闭
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+
+        // ESC 键关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        // ---------- 初始化 ----------
+        loadFileManager();
+
+        // 暴露到全局，方便调试
+        window.loadFileManager = loadFileManager;
+    </script>
+
+</body>
+</html>
