@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>墨阁 · 投稿</title>
+    <title>蒋语 · 投稿</title>
     <style>
         /* 全局重置 */
         * {
@@ -407,16 +407,16 @@
 
     <!-- 顶部栏 -->
     <header class="top-bar">
-        <a href="index.html" class="brand">墨阁</a>
+        <a href="index.html" class="brand">蒋语</a>
         <a href="投稿.html" class="submit-link">
-            <span class="icon">✍️</span> 投稿
+            <span class="icon">✍️</span> 编辑
         </a>
     </header>
 
     <!-- 主内容 -->
     <main class="main-content">
-        <h2 class="page-title">投稿 · 文件浏览</h2>
-        <p class="page-subtitle">点击任意文件查看内容 · 支持文件夹、TXT 文档与图片</p>
+        <h2 class="page-title">投稿</h2>
+        <p class="page-subtitle">点击任意文件查看内容</p>
 
         <div class="file-manager">
             <div id="fileGrid" class="file-list">
@@ -432,7 +432,7 @@
         <div class="modal" role="dialog" aria-modal="true">
             <div class="modal-header">
                 <div class="modal-title" id="modalTitle">
-                    <span class="file-icon">📄</span>
+                    <span class="file-icon">ⓕ</span>
                     <span id="modalFileName">文件名</span>
                 </div>
                 <button class="modal-close" id="modalCloseBtn" aria-label="关闭">✕</button>
@@ -521,7 +521,7 @@
 
                     const icon = document.createElement('div');
                     icon.className = 'file-icon';
-                    icon.textContent = entry.type === 'folder' ? '📁' : (entry.type === 'image' ? '🖼️' : '📄');
+                    icon.textContent = entry.type === 'folder' ? '📁' : (entry.type === 'image' ? '📚' : '🗒');
 
                     const label = document.createElement('div');
                     label.className = 'file-name';
@@ -534,7 +534,7 @@
                     fileGrid.appendChild(item);
                 }
             } catch (err) {
-                fileGrid.innerHTML = `<div class="empty-message">⚠️ 读取失败：${err.message}<br><span style="font-size:0.85rem;">请确认 files.json 已由 GitHub Actions 生成</span></div>`;
+                fileGrid.innerHTML = `<div class="empty-message">⚠️ 读取失败</span></div>`;
             }
         }
 
@@ -550,7 +550,7 @@
                     const innerEntries = getEntriesFromManifest(manifest, entry.path);
 
                     if (innerEntries.length === 0) {
-                        modalBody.innerHTML = '<div class="empty-message">此文件夹为空或没有可显示的文件</div>';
+                        modalBody.innerHTML = '<div class="empty-message">此文件夹为空</div>';
                         return;
                     }
 
@@ -563,7 +563,7 @@
 
                         const icon = document.createElement('div');
                         icon.className = 'file-icon';
-                        icon.textContent = inner.type === 'folder' ? '📁' : (inner.type === 'image' ? '🖼️' : '📄');
+                        icon.textContent = inner.type === 'folder' ? '📁' : (inner.type === 'image' ? '📚' : '🗒');
 
                         const nameDiv = document.createElement('div');
                         nameDiv.className = 'file-name';
@@ -587,7 +587,7 @@
                 }
 
             } else if (entry.type === 'text') {
-                openModal(entry.name, '📄', '<div class="modal-loading">正在加载文本…</div>');
+                openModal(entry.name, '🗒', '<div class="modal-loading">正在加载文本…</div>');
 
                 try {
                     const res = await fetch(`${entry.path}?t=${Date.now()}`);
@@ -604,7 +604,7 @@
                 }
 
             } else if (entry.type === 'image') {
-                openModal(entry.name, '🖼️', '<div class="modal-loading">正在加载图片…</div>');
+                openModal(entry.name, '📚', '<div class="modal-loading">正在加载图片…</div>');
 
                 const img = document.createElement('img');
                 img.className = 'image-preview';
