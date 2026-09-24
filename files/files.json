@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "name": "图片",
+    "path": "图片",
+    "type": "folder",
+    "children": [
+      {
+        "name": "表情包",
+        "path": "图片/表情包",
+        "type": "folder",
+        "children": [
+          {
+            "name": "我鼻子一酸1.jpg",
+            "path": "图片/表情包/我鼻子一酸1.jpg",
+            "type": "image"
+          }
+        ]
+      }
+    ]
+  }
+]
