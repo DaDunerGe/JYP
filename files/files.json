@@ -1,5 +1,17 @@
 [
   {
+    "name": "其他金句",
+    "path": "其他金句",
+    "type": "folder",
+    "children": [
+      {
+        "name": "_本目录可上传其他老师的名句.txt",
+        "path": "其他金句/_本目录可上传其他老师的名句.txt",
+        "type": "text"
+      }
+    ]
+  },
+  {
     "name": "图片",
     "path": "图片",
     "type": "folder",
