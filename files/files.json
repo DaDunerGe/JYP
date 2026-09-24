@@ -96,6 +96,11 @@
         "type": "text"
       },
       {
+        "name": "开会.txt",
+        "path": "老蒋语录/开会.txt",
+        "type": "text"
+      },
+      {
         "name": "蒋.txt",
         "path": "老蒋语录/蒋.txt",
         "type": "text"
