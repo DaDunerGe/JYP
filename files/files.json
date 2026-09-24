@@ -86,6 +86,11 @@
         "type": "text"
       },
       {
+        "name": "faec.txt",
+        "path": "老蒋语录/faec.txt",
+        "type": "text"
+      },
+      {
         "name": "取舍论.txt",
         "path": "老蒋语录/取舍论.txt",
         "type": "text"
