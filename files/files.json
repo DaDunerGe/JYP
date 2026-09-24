@@ -106,6 +106,11 @@
         "type": "text"
       },
       {
+        "name": "氢氧化猫.txt",
+        "path": "老蒋语录/氢氧化猫.txt",
+        "type": "text"
+      },
+      {
         "name": "蒋.txt",
         "path": "老蒋语录/蒋.txt",
         "type": "text"
