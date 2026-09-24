@@ -119,6 +119,11 @@
         "name": "贵族.txt",
         "path": "老蒋语录/贵族.txt",
         "type": "text"
+      },
+      {
+        "name": "高一期末大捷.txt",
+        "path": "老蒋语录/高一期末大捷.txt",
+        "type": "text"
       }
     ]
   },
