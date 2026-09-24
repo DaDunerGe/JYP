@@ -22,6 +22,11 @@
         "type": "folder",
         "children": [
           {
+            "name": "long face.jpg",
+            "path": "图片/表情包/long face.jpg",
+            "type": "image"
+          },
+          {
             "name": "我鼻子一酸.jpg",
             "path": "图片/表情包/我鼻子一酸.jpg",
             "type": "image"
