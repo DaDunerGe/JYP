@@ -104,6 +104,11 @@
         "name": "蒋.txt",
         "path": "老蒋语录/蒋.txt",
         "type": "text"
+      },
+      {
+        "name": "贵族.txt",
+        "path": "老蒋语录/贵族.txt",
+        "type": "text"
       }
     ]
   },
