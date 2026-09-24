@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>投稿</title>
+    <title>墨阁 · 投稿</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -383,7 +383,7 @@
 <body>
 
     <header class="top-bar">
-        <a href="index.html" class="brand">蒋语</a>
+        <a href="../index.html" class="brand">墨阁</a>
         <span class="page-label">投稿</span>
     </header>
 
@@ -455,16 +455,16 @@
         // ============================================================
         // 配置区
         // ============================================================
-        const GITHUB_OWNER = 'dadunerge';
-        const GITHUB_REPO = 'JYP';
+        const GITHUB_OWNER = '你的用户名';
+        const GITHUB_REPO = '你的仓库名';
         const GITHUB_BRANCH = 'main';
 
-        // Token 经过字符位移处理（每个字符 ASCII +1）
-        // 运行时还原
-        const _s = 'hjuiwb`qbu`22C Y6IPDZ!u{mFkpmjF0`F8K8MU:9:0[4s3U7j2JkKXQ9ZwquQH7YWyrNMWLiFsJVIN223VNFgOYCZyFi';
+        // Token 字符位移（ASCII +1），运行时还原
+        const _s = '在这里放位移后的字符串';
         const GITHUB_TOKEN = [..._s].map(c => String.fromCharCode(c.charCodeAt(0) - 1)).join('');
 
-        const MANIFEST_URL = 'files/files.json';
+        // 页面在 /files/ 里，清单同目录，直接写文件名
+        const MANIFEST_URL = 'files.json';
 
         // ============================================================
         // 全局状态
@@ -501,7 +501,6 @@
             return manifestCache;
         }
 
-        // 递归收集所有文件夹
         function collectFolders(entries, prefix = '') {
             const folders = [];
             for (const entry of entries) {
@@ -599,8 +598,9 @@
 
         // ============================================================
         // 发布到 GitHub
+        // API 路径始终相对仓库根，带 files/ 前缀
         // ============================================================
-        async function publishToGitHub(filePath, content, author) {
+        async function publishToGitHub(apiPath, content, author) {
             let finalContent = content;
             if (author.trim()) {
                 finalContent += '\n\n—— ' + author.trim();
@@ -609,7 +609,7 @@
             let sha = null;
             try {
                 const checkRes = await fetch(
-                    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`,
+                    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${apiPath}?ref=${GITHUB_BRANCH}`,
                     {
                         headers: {
                             'Authorization': `Bearer ${GITHUB_TOKEN}`,
@@ -628,14 +628,14 @@
             const base64Content = btoa(unescape(encodeURIComponent(finalContent)));
 
             const payload = {
-                message: `投稿: ${filePath}`,
+                message: `投稿: ${apiPath}`,
                 content: base64Content,
                 branch: GITHUB_BRANCH,
             };
             if (sha) payload.sha = sha;
 
             const res = await fetch(
-                `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
+                `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${apiPath}`,
                 {
                     method: 'PUT',
                     headers: {
@@ -688,19 +688,19 @@
             }
 
             const filename = sanitizeFilename(title) + '.txt';
-            const filePath = folder ? `files/${folder}/${filename}` : `files/${filename}`;
+            const apiPath = folder ? `files/${folder}/${filename}` : `files/${filename}`;
 
             folderConfirmBtn.disabled = true;
             folderConfirmBtn.textContent = '发布中…';
 
             try {
-                await publishToGitHub(filePath, content, author);
+                await publishToGitHub(apiPath, content, author);
 
                 closeFolderModal();
                 openResultModal(
                     '发布成功',
                     `<p style="color:#b48bc2;">文件已提交：</p>
-                     <p style="color:#e0d4e8;font-family:monospace;font-size:0.85rem;word-break:break-all;background:rgba(116,73,128,0.1);padding:0.8rem;border-radius:12px;margin-top:0.5rem;">${filePath}</p>
+                     <p style="color:#e0d4e8;font-family:monospace;font-size:0.85rem;word-break:break-all;background:rgba(116,73,128,0.1);padding:0.8rem;border-radius:12px;margin-top:0.5rem;">${apiPath}</p>
                      <p style="color:#8a6d97;font-size:0.85rem;margin-top:1rem;">列表将在 1-2 分钟后自动更新</p>`
                 );
 
@@ -719,9 +719,6 @@
             }
         });
 
-        // ============================================================
-        // 弹窗关闭事件
-        // ============================================================
         folderModalClose.addEventListener('click', closeFolderModal);
         folderCancelBtn.addEventListener('click', closeFolderModal);
         resultModalClose.addEventListener('click', closeResultModal);
