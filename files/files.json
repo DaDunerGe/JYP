@@ -28,6 +28,11 @@
         "name": "MEITU_20260917_203201244.jpg",
         "path": "test/MEITU_20260917_203201244.jpg",
         "type": "image"
+      },
+      {
+        "name": "蒋.jpg",
+        "path": "test/蒋.jpg",
+        "type": "image"
       }
     ]
   },
