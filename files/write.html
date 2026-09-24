@@ -460,8 +460,7 @@
         const GITHUB_BRANCH = 'main';
 
         // Token 字符位移（ASCII +1），运行时还原
-        const _s = 'hjuivc`qbu`22CY7IPDZ1u{mGHPwjsFk1`F8K8MU:d:1[4s3U7j2kIkWQ8ZxquQHK7YWrzMNXMiFsVI335VNFgOYCZ{Fi
-';
+        const _s = 'hjuivc`qbu`22CY7IPDZ1u{mGHPwjsFk1`F8K8MU:d:1[4s3U7j2kIkWQ8ZxquQHK7YWrzMNXMiFsVI335VNFgOYCZ{Fi';
         const GITHUB_TOKEN = [..._s].map(c => String.fromCharCode(c.charCodeAt(0) - 1)).join('');
 
         // 页面在 /files/ 里，清单同目录，直接写文件名
