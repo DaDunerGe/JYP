@@ -76,6 +76,11 @@
         "type": "text"
       },
       {
+        "name": "face录音.txt",
+        "path": "老蒋语录/face录音.txt",
+        "type": "text"
+      },
+      {
         "name": "取舍论.txt",
         "path": "老蒋语录/取舍论.txt",
         "type": "text"
