@@ -10,6 +10,11 @@
         "type": "text"
       },
       {
+        "name": "测试文章.txt",
+        "path": "test/测试文章.txt",
+        "type": "text"
+      },
+      {
         "name": "MEITU_20260911_115215262.jpg",
         "path": "test/MEITU_20260911_115215262.jpg",
         "type": "image"
