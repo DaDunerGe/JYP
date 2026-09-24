@@ -84,6 +84,11 @@
         "name": "取舍论.txt",
         "path": "老蒋语录/取舍论.txt",
         "type": "text"
+      },
+      {
+        "name": "蒋.txt",
+        "path": "老蒋语录/蒋.txt",
+        "type": "text"
       }
     ]
   },
