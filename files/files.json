@@ -114,6 +114,11 @@
         "type": "image"
       },
       {
+        "name": "我很拼.png",
+        "path": "图片/我很拼.png",
+        "type": "image"
+      },
+      {
         "name": "有温度的教育.jpg",
         "path": "图片/有温度的教育.jpg",
         "type": "image"
