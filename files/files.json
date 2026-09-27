@@ -42,6 +42,11 @@
             "type": "image"
           },
           {
+            "name": "我有一计.png",
+            "path": "图片/表情包/我有一计.png",
+            "type": "image"
+          },
+          {
             "name": "我鼻子一酸.jpg",
             "path": "图片/表情包/我鼻子一酸.jpg",
             "type": "image"
