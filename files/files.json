@@ -32,6 +32,11 @@
         "type": "folder",
         "children": [
           {
+            "name": "face一个我就这样.png",
+            "path": "图片/表情包/face一个我就这样.png",
+            "type": "image"
+          },
+          {
             "name": "long face.jpg",
             "path": "图片/表情包/long face.jpg",
             "type": "image"
