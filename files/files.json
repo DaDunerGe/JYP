@@ -8,6 +8,11 @@
         "name": "_本目录可上传其他老师的名句.txt",
         "path": "其他金句/_本目录可上传其他老师的名句.txt",
         "type": "text"
+      },
+      {
+        "name": "规则by“fj”.txt",
+        "path": "其他金句/规则by“fj”.txt",
+        "type": "text"
       }
     ]
   },
