@@ -136,6 +136,11 @@
         "type": "text"
       },
       {
+        "name": "站队.txt",
+        "path": "老蒋语录/站队.txt",
+        "type": "text"
+      },
+      {
         "name": "蒋.txt",
         "path": "老蒋语录/蒋.txt",
         "type": "text"
