@@ -116,6 +116,11 @@
         "type": "text"
       },
       {
+        "name": "亵渎.txt",
+        "path": "老蒋语录/亵渎.txt",
+        "type": "text"
+      },
+      {
         "name": "取舍论.txt",
         "path": "老蒋语录/取舍论.txt",
         "type": "text"
