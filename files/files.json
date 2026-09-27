@@ -112,6 +112,11 @@
         "name": "经典老蒋白底照片.jpg",
         "path": "图片/经典老蒋白底照片.jpg",
         "type": "image"
+      },
+      {
+        "name": "酱一瓶.png",
+        "path": "图片/酱一瓶.png",
+        "type": "image"
       }
     ]
   },
