@@ -86,6 +86,11 @@
         "type": "text"
       },
       {
+        "name": "fa.txt",
+        "path": "老蒋语录/fa.txt",
+        "type": "text"
+      },
+      {
         "name": "face录音.txt",
         "path": "老蒋语录/face录音.txt",
         "type": "text"
