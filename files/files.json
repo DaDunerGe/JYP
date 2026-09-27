@@ -94,6 +94,11 @@
         "type": "image"
       },
       {
+        "name": "您被face了.jpg",
+        "path": "图片/您被face了.jpg",
+        "type": "image"
+      },
+      {
         "name": "有温度的教育.jpg",
         "path": "图片/有温度的教育.jpg",
         "type": "image"
