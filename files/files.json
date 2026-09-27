@@ -72,6 +72,11 @@
             "type": "image"
           },
           {
+            "name": "禁止face.png",
+            "path": "图片/表情包/禁止face.png",
+            "type": "image"
+          },
+          {
             "name": "野港先生.jpg",
             "path": "图片/表情包/野港先生.jpg",
             "type": "image"
