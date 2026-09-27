@@ -42,6 +42,11 @@
             "type": "image"
           },
           {
+            "name": "你看，quiz.png",
+            "path": "图片/表情包/你看，quiz.png",
+            "type": "image"
+          },
+          {
             "name": "又肥四一个.png",
             "path": "图片/表情包/又肥四一个.png",
             "type": "image"
