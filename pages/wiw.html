@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>四边形贴合工具</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd}
+  header{padding:8px 12px;background:#2a2a2a;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  button{background:#3a6ea5;color:#fff;border:0;padding:6px 12px;border-radius:4px;cursor:pointer}
+  button:hover{background:#4a7eb5}
+  .wrap{display:flex;gap:12px;padding:12px;flex-wrap:wrap}
+  .panel{background:#252525;border-radius:6px;padding:8px;flex:1;min-width:320px}
+  .panel h3{margin:0 0 6px;font-size:14px;color:#aaa}
+  canvas{display:block;width:100%;height:auto;background:#000;cursor:crosshair}
+  .hint{font-size:12px;color:#888;margin-top:4px}
+  #preview{max-width:100%;background:#000}
+</style>
+</head>
+<body>
+<header>
+  <label>目标图 <input type="file" id="dstFile" accept="image/*"></label>
+  <button id="exportBtn">导出 PNG</button>
+  <span id="status" class="hint"></span>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h3>目标图：拖 4 个点（顺序与素材一致：左上→右上→右下→左下）</h3>
+    <canvas id="dstCanvas"></canvas>
+    <div class="hint">上传目标图后，把橙色点拖到目标框四角</div>
+  </div>
+  <div class="panel">
+    <h3>合成预览</h3>
+    <canvas id="preview"></canvas>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   素材缺口四点（a.png 原始像素坐标，固定）
+   顺序 左上→右上→右下→左下
+   ============================================================ */
+const SRC_POINTS = [
+  {x: 884,  y: 377},   // 1 左上
+  {x: 1669, y: 405},   // 2 右上
+  {x: 1655, y: 948},   // 3 右下
+  {x: 868,  y: 666},   // 4 左下
+];
+
+/* 目标图四点：初始与素材相同，上传后拖动橙色点 */
+const DST_POINTS = [
+  {x: 884,  y: 377},
+  {x: 1669, y: 405},
+  {x: 1655, y: 948},
+  {x: 868,  y: 666},
+];
+
+/* ---------- 状态 ---------- */
+const state = {
+  srcImg: null, dstImg: null,
+  P: SRC_POINTS.map(p=>({...p})),
+  Q: DST_POINTS.map(p=>({...p})),
+  dragging: null,
+};
+
+/* ---------- 单应性矩阵 ---------- */
+function solveHomography(src, dst){
+  const A=[], b=[];
+  for(let i=0;i<4;i++){
+    const {x,y}=src[i], {x:u,y:v}=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v);
+  }
+  const n=8;
+  for(let i=0;i<n;i++){
+    let p=i;
+    for(let j=i+1;j<n;j++) if(Math.abs(A[j][i])>Math.abs(A[p][i])) p=j;
+    [A[i],A[p]]=[A[p],A[i]]; [b[i],b[p]]=[b[p],b[i]];
+    if(Math.abs(A[i][i])<1e-12) return null;
+    for(let j=i+1;j<n;j++){
+      const f=A[j][i]/A[i][i];
+      for(let k=i;k<n;k++) A[j][k]-=f*A[i][k];
+      b[j]-=f*b[i];
+    }
+  }
+  const h=new Array(8);
+  for(let i=n-1;i>=0;i--){
+    let s=b[i];
+    for(let j=i+1;j<n;j++) s-=A[i][j]*h[j];
+    h[i]=s/A[i][i];
+  }
+  return [h[0],h[1],h[2], h[3],h[4],h[5], h[6],h[7],1];
+}
+
+function invert3x3(m){
+  const [a,b,c,d,e,f,g,h,i]=m;
+  const A=e*i-f*h, B=-(d*i-f*g), C=d*h-e*g;
+  const det=a*A+b*B+c*C;
+  if(Math.abs(det)<1e-12) return null;
+  const inv=1/det;
+  return [
+    A*inv, (c*h-b*i)*inv, (b*f-c*e)*inv,
+    B*inv, (a*i-c*g)*inv, (c*d-a*f)*inv,
+    C*inv, (b*g-a*h)*inv, (a*e-b*d)*inv
+  ];
+}
+
+/* ---------- 逐像素 warp ---------- */
+function warpImage(srcImg, H, outW, outH){
+  const sc=document.createElement('canvas');
+  sc.width=srcImg.width; sc.height=srcImg.height;
+  const sctx=sc.getContext('2d',{willReadFrequently:true});
+  sctx.drawImage(srcImg,0,0);
+  const srcData=sctx.getImageData(0,0,sc.width,sc.height).data;
+
+  const out=new ImageData(outW,outH);
+  const Hinv=invert3x3(H);
+  if(!Hinv) return out;
+  const od=out.data;
+
+  for(let v=0;v<outH;v++){
+    for(let u=0;u<outW;u++){
+      const w=Hinv[6]*u+Hinv[7]*v+Hinv[8];
+      if(Math.abs(w)<1e-12) continue;
+      const x=(Hinv[0]*u+Hinv[1]*v+Hinv[2])/w;
+      const y=(Hinv[3]*u+Hinv[4]*v+Hinv[5])/w;
+      if(x<0||y<0||x>=sc.width||y>=sc.height) continue;
+      const x0=Math.floor(x), y0=Math.floor(y);
+      const x1=Math.min(x0+1,sc.width-1), y1=Math.min(y0+1,sc.height-1);
+      const fx=x-x0, fy=y-y0;
+      const i00=(y0*sc.width+x0)*4, i10=(y0*sc.width+x1)*4;
+      const i01=(y1*sc.width+x0)*4, i11=(y1*sc.width+x1)*4;
+      const di=(v*outW+u)*4;
+      for(let k=0;k<4;k++){
+        const top=srcData[i00+k]*(1-fx)+srcData[i10+k]*fx;
+        const bot=srcData[i01+k]*(1-fx)+srcData[i11+k]*fx;
+        od[di+k]=top*(1-fy)+bot*fy;
+      }
+    }
+  }
+  return out;
+}
+
+/* ---------- 画布 ---------- */
+function fitCanvas(canvas, img){
+  const maxW=600;
+  const scale=Math.min(1,maxW/img.width);
+  canvas.width=Math.round(img.width*scale);
+  canvas.height=Math.round(img.height*scale);
+  canvas.dataset.scale=scale;
+}
+
+function drawOverlay(canvas, img, pts, color){
+  const scale=parseFloat(canvas.dataset.scale)||1;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(img) ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  if(pts.length===4){
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x*scale, pts[0].y*scale);
+    for(let i=1;i<4;i++) ctx.lineTo(pts[i].x*scale, pts[i].y*scale);
+    ctx.closePath();
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.stroke();
+  }
+  pts.forEach((p,i)=>{
+    const px=p.x*scale, py=p.y*scale;
+    ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='12px sans-serif';
+    ctx.fillText(i+1, px+10, py-10);
+  });
+}
+
+/* ---------- 拖拽（仅目标图） ---------- */
+function bindDrag(canvas, which){
+  canvas.addEventListener('pointerdown', e=>{
+    const rect=canvas.getBoundingClientRect();
+    const scale=parseFloat(canvas.dataset.scale)||1;
+    const mx=(e.clientX-rect.left)*(canvas.width/rect.width)/scale;
+    const my=(e.clientY-rect.top)*(canvas.height/rect.height)/scale;
+    const pts=state[which];
+    let best=-1, bestD=Infinity;
+    pts.forEach((p,i)=>{
+      const d=(p.x-mx)**2+(p.y-my)**2;
+      if(d<bestD){bestD=d;best=i;}
+    });
+    const hitR=40/scale;
+    if(bestD < hitR*hitR){ state.dragging={which, idx:best}; canvas.setPointerCapture(e.pointerId); }
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if(!state.dragging) return;
+    const {which, idx}=state.dragging;
+    const rect=canvas.getBoundingClientRect();
+    const scale=parseFloat(canvas.dataset.scale)||1;
+    const mx=(e.clientX-rect.left)*(canvas.width/rect.width)/scale;
+    const my=(e.clientY-rect.top)*(canvas.height/rect.height)/scale;
+    state[which][idx]={x:mx, y:my};
+    refresh();
+  });
+  canvas.addEventListener('pointerup', ()=>{ state.dragging=null; });
+  canvas.addEventListener('pointercancel', ()=>{ state.dragging=null; });
+}
+
+/* ---------- 刷新 ---------- */
+let rafId=null;
+function refresh(){
+  if(rafId) return;
+  rafId=requestAnimationFrame(()=>{
+    rafId=null;
+    const dc=document.getElementById('dstCanvas');
+    if(state.dstImg) drawOverlay(dc, state.dstImg, state.Q, '#fa4');
+    if(state.srcImg && state.dstImg){
+      doComposite();
+    }
+  });
+}
+
+function doComposite(){
+  const H=solveHomography(state.P, state.Q);
+  if(!H){ document.getElementById('status').textContent='矩阵求解失败（四点可能共线）'; return; }
+
+  const outW=state.dstImg.width, outH=state.dstImg.height;
+  const full=warpImage(state.srcImg, H, outW, outH);
+
+  const wc=document.createElement('canvas');
+  wc.width=outW; wc.height=outH;
+  wc.getContext('2d').putImageData(full,0,0);
+
+  const maxW=900;
+  const s=Math.min(1, maxW/outW);
+  const pw=Math.round(outW*s), ph=Math.round(outH*s);
+
+  const preview=document.getElementById('preview');
+  preview.width=pw; preview.height=ph;
+  const pctx=preview.getContext('2d');
+  pctx.drawImage(state.dstImg,0,0,pw,ph);
+  pctx.drawImage(wc,0,0,pw,ph);
+
+  document.getElementById('status').textContent =
+    `H=[${H.map(n=>n.toFixed(3)).join(', ')}]`;
+}
+
+/* ---------- 上传目标图 ---------- */
+document.getElementById('dstFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  state.dstImg=await createImageBitmap(f);
+  fitCanvas(document.getElementById('dstCanvas'), state.dstImg);
+  refresh();
+});
+
+/* ---------- 导出 ---------- */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(!state.srcImg||!state.dstImg) return;
+  const H=solveHomography(state.P, state.Q);
+  if(!H) return alert('矩阵求解失败');
+  const outW=state.dstImg.width, outH=state.dstImg.height;
+  const full=warpImage(state.srcImg, H, outW, outH);
+  const wc=document.createElement('canvas'); wc.width=outW; wc.height=outH;
+  wc.getContext('2d').putImageData(full,0,0);
+  const out=document.createElement('canvas'); out.width=outW; out.height=outH;
+  const ctx=out.getContext('2d');
+  ctx.drawImage(state.dstImg,0,0);
+  ctx.drawImage(wc,0,0);
+  out.toBlob(blob=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='composite.png';
+    a.click();
+  });
+});
+
+/* ---------- 绑定 ---------- */
+bindDrag(document.getElementById('dstCanvas'),'Q');
+
+/* ---------- 启动：自动加载 a.png ---------- */
+async function loadSource(url){
+  try{
+    const res=await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const blob=await res.blob();
+    state.srcImg=await createImageBitmap(blob);
+    refresh();
+  }catch(err){
+    document.getElementById('status').textContent =
+      `a.png 加载失败（${err.message}），请用本地服务器打开页面`;
+  }
+}
+loadSource('a.png');
+</script>
+</body>
+</html>
