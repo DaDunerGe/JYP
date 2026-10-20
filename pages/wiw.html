@@ -27,7 +27,7 @@
   <div class="panel">
     <h3>目标图：拖 4 个点（顺序与素材一致：左上→右上→右下→左下）</h3>
     <canvas id="dstCanvas"></canvas>
-    <div class="hint">上传目标图后，把橙色点拖到目标框四角</div>
+    <div class="hint">上传目标图后，橙色点默认铺满全图，拖到目标框四角</div>
   </div>
   <div class="panel">
     <h3>合成预览</h3>
@@ -41,25 +41,29 @@
    顺序 左上→右上→右下→左下
    ============================================================ */
 const SRC_POINTS = [
-  {x: 884,  y: 377},   // 1 左上
-  {x: 1669, y: 405},   // 2 右上
-  {x: 1655, y: 948},   // 3 右下
-  {x: 868,  y: 666},   // 4 左下
-];
-
-/* 目标图四点：初始与素材相同，上传后拖动橙色点 */
-const DST_POINTS = [
   {x: 884,  y: 377},
   {x: 1669, y: 405},
   {x: 1655, y: 948},
   {x: 868,  y: 666},
 ];
 
+/* 目标图四点的默认位置：按目标图尺寸铺满（留 5% 边距） */
+function defaultDstPoints(img){
+  const w=img.width, h=img.height;
+  const m=0.05;
+  return [
+    {x:w*m,     y:h*m},      // 左上
+    {x:w*(1-m), y:h*m},      // 右上
+    {x:w*(1-m), y:h*(1-m)},  // 右下
+    {x:w*m,     y:h*(1-m)},  // 左下
+  ];
+}
+
 /* ---------- 状态 ---------- */
 const state = {
   srcImg: null, dstImg: null,
   P: SRC_POINTS.map(p=>({...p})),
-  Q: DST_POINTS.map(p=>({...p})),
+  Q: [],                 // 上传目标图后初始化
   dragging: null,
 };
 
@@ -175,6 +179,7 @@ function drawOverlay(canvas, img, pts, color){
 /* ---------- 拖拽（仅目标图） ---------- */
 function bindDrag(canvas, which){
   canvas.addEventListener('pointerdown', e=>{
+    if(state[which].length!==4) return;
     const rect=canvas.getBoundingClientRect();
     const scale=parseFloat(canvas.dataset.scale)||1;
     const mx=(e.clientX-rect.left)*(canvas.width/rect.width)/scale;
@@ -209,8 +214,8 @@ function refresh(){
   rafId=requestAnimationFrame(()=>{
     rafId=null;
     const dc=document.getElementById('dstCanvas');
-    if(state.dstImg) drawOverlay(dc, state.dstImg, state.Q, '#fa4');
-    if(state.srcImg && state.dstImg){
+    if(state.dstImg && state.Q.length===4) drawOverlay(dc, state.dstImg, state.Q, '#fa4');
+    if(state.srcImg && state.dstImg && state.Q.length===4){
       doComposite();
     }
   });
@@ -245,13 +250,14 @@ function doComposite(){
 document.getElementById('dstFile').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   state.dstImg=await createImageBitmap(f);
+  state.Q=defaultDstPoints(state.dstImg);   // 关键：重置为铺满目标图
   fitCanvas(document.getElementById('dstCanvas'), state.dstImg);
   refresh();
 });
 
 /* ---------- 导出 ---------- */
 document.getElementById('exportBtn').addEventListener('click', ()=>{
-  if(!state.srcImg||!state.dstImg) return;
+  if(!state.srcImg||!state.dstImg||state.Q.length!==4) return;
   const H=solveHomography(state.P, state.Q);
   if(!H) return alert('矩阵求解失败');
   const outW=state.dstImg.width, outH=state.dstImg.height;
