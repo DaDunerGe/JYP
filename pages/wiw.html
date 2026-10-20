@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>透视贴合（完美无损版）</title>
+<title>透视贴合（最终修复版）</title>
 <style>
   body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd}
   header{padding:12px;background:#2a2a2a;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
@@ -21,7 +21,7 @@
 <header>
   <label>目标图 <input type="file" id="dstFile" accept="image/*"></label>
   <div class="control">
-    <span>大小微调:</span>
+    <span>缩放微调:</span>
     <input type="range" id="scaleSlider" min="0.5" max="2" step="0.01" value="1.0">
     <span id="scaleVal">1.00x</span>
   </div>
@@ -39,7 +39,7 @@
 <script>
 const SRC_W = 2432, SRC_H = 1600;
 
-// 【保持原始坐标】 左上、右上、右下、左下
+// 原始坐标（左上、右上、右下、左下）
 const HOLE = [
   {x: 884,  y: 377},
   {x: 1669, y: 405},
@@ -49,96 +49,160 @@ const HOLE = [
 
 const state = { srcImg: null, dstImg: null };
 
-// --- 核心：利用 Canvas 2D 的三角形仿射变换来模拟透视 ---
-function drawPerspectiveTriangle(ctx, img, p0, p1, p2, u0, u1, u2) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.lineTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.closePath();
-  ctx.clip();
-
-  // 计算变换矩阵
-  let x0 = u0.x, y0 = u0.y;
-  let x1 = u1.x, y1 = u1.y;
-  let x2 = u2.x, y2 = u2.y;
-  
-  let denom = x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0;
-  if (denom === 0) { ctx.restore(); return; }
-
-  let a = -(y0 * (x2 - x1) - y1 * x2 + y2 * x1 + (y1 - y2) * x0) / denom;
-  let b = (y0 * (p2.x - p1.x) - y1 * p2.x + y2 * p1.x + (y1 - y2) * p0.x) / denom;
-  let c = (x0 * (p2.x - p1.x) - x1 * p2.x + x2 * p1.x + (x1 - x2) * p0.x) / denom;
-  let d = -(x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0) / denom;
-  let e = (x0 * (p2.y - p1.y) - x1 * p2.y + x2 * p1.y + (x1 - x2) * p0.y) / denom;
-  let f = (y0 * (p2.y - p1.y) - y1 * p2.y + y2 * p1.y + (y1 - y2) * p0.y) / denom;
-  let g = (x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0) / denom;
-
-  ctx.transform(a, d, b, e, c, f);
-  ctx.drawImage(img, 0, 0);
-  ctx.restore();
+// 求单应性矩阵 (用于完美透视)
+function solveHomography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const { x, y } = src[i], { x: u, y: v } = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+  }
+  const n = 8;
+  for (let i = 0; i < n; i++) {
+    let p = i;
+    for (let j = i + 1; j < n; j++) if (Math.abs(A[j][i]) > Math.abs(A[p][i])) p = j;
+    [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
+    if (Math.abs(A[i][i]) < 1e-12) return null;
+    for (let j = i + 1; j < n; j++) {
+      const f = A[j][i] / A[i][i];
+      for (let k = i; k < n; k++) A[j][k] -= f * A[i][k];
+      b[j] -= f * b[i];
+    }
+  }
+  const h = new Array(8);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = b[i];
+    for (let j = i + 1; j < n; j++) s -= A[i][j] * h[j];
+    h[i] = s / A[i][i];
+  }
+  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
 }
 
-function warpImagePerspective(srcImg, targetPts, drawW, drawH) {
-  const canvas = document.createElement('canvas');
-  canvas.width = SRC_W;
-  canvas.height = SRC_H;
-  const ctx = canvas.getContext('2d');
-
-  // 原图的四个角
-  const u0 = {x: 0, y: 0};
-  const u1 = {x: drawW, y: 0};
-  const u2 = {x: drawW, y: drawH};
-  const u3 = {x: 0, y: drawH};
-
-  // 拆成两个三角形，分别做仿射透视映射
-  drawPerspectiveTriangle(ctx, srcImg, targetPts[0], targetPts[1], targetPts[2], u0, u1, u2);
-  drawPerspectiveTriangle(ctx, srcImg, targetPts[0], targetPts[2], targetPts[3], u0, u2, u3);
-
-  return canvas;
+function invert3x3(m) {
+  const [a, b, c, d, e, f, g, h, i] = m;
+  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  if (Math.abs(det) < 1e-12) return null;
+  const inv = 1 / det;
+  return [
+    A * inv, (c * h - b * i) * inv, (b * f - c * e) * inv,
+    B * inv, (a * i - c * g) * inv, (c * d - a * f) * inv,
+    C * inv, (b * g - a * h) * inv, (a * e - b * d) * inv
+  ];
 }
 
-function composite(){
-  if(!state.srcImg || !state.dstImg) return;
+// 把原始图像通过矩阵映射到目标画布
+function warpImage(srcImg, H, outW, outH) {
+  const sc = document.createElement('canvas');
+  sc.width = srcImg.width; sc.height = srcImg.height;
+  const sctx = sc.getContext('2d', { willReadFrequently: true });
+  sctx.drawImage(srcImg, 0, 0);
+  const srcData = sctx.getImageData(0, 0, sc.width, sc.height).data;
+
+  const out = new ImageData(outW, outH);
+  const Hinv = invert3x3(H);
+  if (!Hinv) return out;
+  const od = out.data;
+
+  for (let v = 0; v < outH; v++) {
+    for (let u = 0; u < outW; u++) {
+      const w = Hinv[6] * u + Hinv[7] * v + Hinv[8];
+      if (Math.abs(w) < 1e-12) continue;
+      const x = (Hinv[0] * u + Hinv[1] * v + Hinv[2]) / w;
+      const y = (Hinv[3] * u + Hinv[4] * v + Hinv[5]) / w;
+      // 如果映射到了原图范围内
+      if (x < 0 || y < 0 || x >= sc.width || y >= sc.height) continue;
+      
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const x1 = Math.min(x0 + 1, sc.width - 1), y1 = Math.min(y0 + 1, sc.height - 1);
+      const fx = x - x0, fy = y - y0;
+      const i00 = (y0 * sc.width + x0) * 4, i10 = (y0 * sc.width + x1) * 4;
+      const i01 = (y1 * sc.width + x0) * 4, i11 = (y1 * sc.width + x1) * 4;
+      const di = (v * outW + u) * 4;
+      for (let k = 0; k < 4; k++) {
+        const top = srcData[i00 + k] * (1 - fx) + srcData[i10 + k] * fx;
+        const bot = srcData[i01 + k] * (1 - fx) + srcData[i11 + k] * fx;
+        od[di + k] = top * (1 - fy) + bot * fy;
+      }
+    }
+  }
+  return out;
+}
+
+function composite() {
+  if (!state.srcImg || !state.dstImg) return;
 
   const scale = parseFloat(document.getElementById('scaleSlider').value);
   document.getElementById('scaleVal').textContent = scale.toFixed(2) + 'x';
 
+  // 1. 获取目标图的原始宽高，并应用微调缩放
+  const dstW = state.dstImg.width * scale;
+  const dstH = state.dstImg.height * scale;
+
+  // 2. 创建一个大画布，把目标图等比缩放后居中绘制到中心（用于提供充足的像素源）
+  // 为了防止缩小后不够，我们要建一个够大的临时画布
+  const tempCanvas = document.createElement('canvas');
+  // 取洞的边界，加上边距
+  const pad = 200; 
+  const minX = Math.min(...HOLE.map(p => p.x)) - pad;
+  const maxX = Math.max(...HOLE.map(p => p.x)) + pad;
+  const minY = Math.min(...HOLE.map(p => p.y)) - pad;
+  const maxY = Math.max(...HOLE.map(p => p.y)) + pad;
+  
+  // 用足够大的画布包裹
+  const tempW = Math.max(dstW, maxX - minX);
+  const tempH = Math.max(dstH, maxY - minY);
+  
+  tempCanvas.width = tempW;
+  tempCanvas.height = tempH;
+  const tctx = tempCanvas.getContext('2d');
+  
+  // 画在正中心
+  const drawX = (tempW - dstW) / 2;
+  const drawY = (tempH - dstH) / 2;
+  tctx.drawImage(state.dstImg, drawX, drawY, dstW, dstH);
+
+  // 3. 建立对应关系
+  // 源点：临时画布上我们画的那个矩形的四个角
+  const SrcPts = [
+    {x: drawX, y: drawY},                     // 左上
+    {x: drawX + dstW, y: drawY},              // 右上
+    {x: drawX + dstW, y: drawY + dstH},       // 右下
+    {x: drawX, y: drawY + dstH}               // 左下
+  ];
+
+  // 目标点：洞里坐标（我们稍微把它往左上角挪一点，因为待会儿映射回素材坐标时要加偏移）
+  // 为了防止强透视产生极端变形，直接按原素材坐标映射即可
+
+  // 4. 计算单应性矩阵
+  const H = solveHomography(SrcPts, HOLE);
+  if (!H) {
+    document.getElementById('status').textContent = '矩阵求解失败';
+    return;
+  }
+
+  // 5. 映射并输出（输出的画布大小等同于素材大小）
+  const warpedData = warpImage(tempCanvas, H, SRC_W, SRC_H);
+
+  // 6. 把生成的数据画到离屏画布上
+  const wc = document.createElement('canvas');
+  wc.width = SRC_W; wc.height = SRC_H;
+  wc.getContext('2d').putImageData(warpedData, 0, 0);
+
+  // 7. 最终合成
   const out = document.createElement('canvas');
   out.width = SRC_W; out.height = SRC_H;
   const ctx = out.getContext('2d');
-
-  // 灰色背景
+  
   ctx.fillStyle = '#444';
   ctx.fillRect(0, 0, SRC_W, SRC_H);
-
-  const dstW = state.dstImg.width;
-  const dstH = state.dstImg.height;
-
-  // 1. 计算洞的外接矩形（用于确定图片初始缩放）
-  const minX = Math.min(...HOLE.map(p=>p.x));
-  const maxX = Math.max(...HOLE.map(p=>p.x));
-  const minY = Math.min(...HOLE.map(p=>p.y));
-  const maxY = Math.max(...HOLE.map(p=>p.y));
-  const bboxW = maxX - minX;
-  const bboxH = maxY - minY;
-
-  // 2. 计算图片为了覆盖洞，需要的宽高 (配合滑块微调)
-  const scaleToFill = Math.max(bboxW / dstW, bboxH / dstH) * scale;
-  const drawW = dstW * scaleToFill;
-  const drawH = dstH * scaleToFill;
-
-  // 3. 执行透视变形（把原图拉伸/折进洞里）
-  const warpedCanvas = warpImagePerspective(state.dstImg, HOLE, drawW, drawH);
-
-  // 4. 画变形后的图（由于 warpedCanvas 是原尺寸，所以画的时候按原尺寸画）
-  ctx.drawImage(warpedCanvas, 0, 0);
-
-  // 5. 盖上透明洞素材
+  
+  // 贴上透视变形后的目标图
+  ctx.drawImage(wc, 0, 0);
+  // 盖上带有透明洞的素材
   ctx.drawImage(state.srcImg, 0, 0, SRC_W, SRC_H);
 
-  // 预览
+  // 预览渲染
   const maxW = 900;
   const s = Math.min(1, maxW / SRC_W);
   const pw = Math.round(SRC_W * s), ph = Math.round(SRC_H * s);
@@ -152,36 +216,52 @@ function composite(){
 
 document.getElementById('scaleSlider').addEventListener('input', composite);
 
-document.getElementById('dstFile').addEventListener('change', async e=>{
-  const f=e.target.files[0]; if(!f) return;
+document.getElementById('dstFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
   state.dstImg = await createImageBitmap(f);
   composite();
 });
 
-document.getElementById('exportBtn').addEventListener('click', ()=>{
-  if(!state.srcImg || !state.dstImg) return;
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (!state.srcImg || !state.dstImg) return;
+  // 导出的逻辑已经在 composite 中实现，这里为了防止重新写一遍，可以通过临时的 canvas 生成
+  // 为了保证不重复写，直接调用 composite 但偷懒提取结果，或者直接重绘一遍。
+  // 这里为了稳妥重新写一遍导出（实际上调用 composite 修改 DOM 也可以）
   
   const scale = parseFloat(document.getElementById('scaleSlider').value);
+  const dstW = state.dstImg.width * scale;
+  const dstH = state.dstImg.height * scale;
+  const pad = 200;
+  const minX = Math.min(...HOLE.map(p => p.x)) - pad;
+  const maxX = Math.max(...HOLE.map(p => p.x)) + pad;
+  const minY = Math.min(...HOLE.map(p => p.y)) - pad;
+  const maxY = Math.max(...HOLE.map(p => p.y)) + pad;
+  const tempW = Math.max(dstW, maxX - minX);
+  const tempH = Math.max(dstH, maxY - minY);
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = tempW; tempCanvas.height = tempH;
+  const tctx = tempCanvas.getContext('2d');
+  const drawX = (tempW - dstW) / 2, drawY = (tempH - dstH) / 2;
+  tctx.drawImage(state.dstImg, drawX, drawY, dstW, dstH);
+
+  const SrcPts = [
+    {x: drawX, y: drawY}, {x: drawX + dstW, y: drawY},
+    {x: drawX + dstW, y: drawY + dstH}, {x: drawX, y: drawY + dstH}
+  ];
+  const H = solveHomography(SrcPts, HOLE);
+  const warpedData = warpImage(tempCanvas, H, SRC_W, SRC_H);
+  
+  const wc = document.createElement('canvas'); wc.width = SRC_W; wc.height = SRC_H;
+  wc.getContext('2d').putImageData(warpedData, 0, 0);
+  
   const out = document.createElement('canvas'); out.width = SRC_W; out.height = SRC_H;
   const ctx = out.getContext('2d');
-  
-  const dstW = state.dstImg.width, dstH = state.dstImg.height;
-  const minX = Math.min(...HOLE.map(p=>p.x));
-  const maxX = Math.max(...HOLE.map(p=>p.x));
-  const minY = Math.min(...HOLE.map(p=>p.y));
-  const maxY = Math.max(...HOLE.map(p=>p.y));
-  const bboxW = maxX - minX;
-  const bboxH = maxY - minY;
-
-  const scaleToFill = Math.max(bboxW / dstW, bboxH / dstH) * scale;
-  const drawW = dstW * scaleToFill, drawH = dstH * scaleToFill;
-
-  const warpedCanvas = warpImagePerspective(state.dstImg, HOLE, drawW, drawH);
-  
-  ctx.drawImage(warpedCanvas, 0, 0);
+  // 透明背景，不填充灰色
+  ctx.drawImage(wc, 0, 0);
   ctx.drawImage(state.srcImg, 0, 0, SRC_W, SRC_H);
-  
-  out.toBlob(blob=>{
+
+  out.toBlob(blob => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'composite.png';
@@ -189,14 +269,14 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   });
 });
 
-async function loadSource(url){
-  try{
-    const res = await fetch(url, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+async function loadSource(url) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
     state.srcImg = await createImageBitmap(blob);
     document.getElementById('status').textContent = 'a.png 已加载，请上传目标图';
-  }catch(err){
+  } catch (err) {
     document.getElementById('status').textContent = `a.png 加载失败（${err.message}）`;
   }
 }
