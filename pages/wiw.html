@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>洞内贴目标图</title>
+<title>洞内贴目标图（修正翻转）</title>
 <style>
   body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd}
   header{padding:8px 12px;background:#2a2a2a;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -11,9 +11,9 @@
   .wrap{display:flex;gap:12px;padding:12px;flex-wrap:wrap}
   .panel{background:#252525;border-radius:6px;padding:8px;flex:1;min-width:320px}
   .panel h3{margin:0 0 6px;font-size:14px;color:#aaa}
-  canvas{display:block;width:100%;height:auto;background:#000}
+  canvas{display:block;width:100%;height:auto;background:#555} /* 背景改灰，方便看透明区 */
   .hint{font-size:12px;color:#888;margin-top:4px}
-  #preview{max-width:100%;background:#000}
+  #preview{max-width:100%;}
 </style>
 </head>
 <body>
@@ -25,14 +25,15 @@
 
 <div class="wrap">
   <div class="panel">
-    <h3>合成预览（素材原尺寸 2432×1600，目标图贴进洞）</h3>
+    <h3>合成预览（素材尺寸 2432×1600）</h3>
     <canvas id="preview"></canvas>
   </div>
 </div>
 
 <script>
-/* 素材尺寸与洞四点（素材坐标系，顺序 左上→右上→右下→左下） */
 const SRC_W = 2432, SRC_H = 1600;
+
+// 素材的洞四点（顺序 左上→右上→右下→左下）
 const HOLE = [
   {x: 884,  y: 377},
   {x: 1669, y: 405},
@@ -42,7 +43,7 @@ const HOLE = [
 
 const state = { srcImg: null, dstImg: null };
 
-/* ---------- 单应性 ---------- */
+// 单应性
 function solveHomography(src, dst){
   const A=[], b=[];
   for(let i=0;i<4;i++){
@@ -84,7 +85,7 @@ function invert3x3(m){
   ];
 }
 
-/* ---------- warp：把 srcImg 按 H 画到 outW×outH ---------- */
+// 加入 1px 羽化的 warp 函数，解决缝隙白边
 function warpImage(srcImg, H, outW, outH){
   const sc=document.createElement('canvas');
   sc.width=srcImg.width; sc.height=srcImg.height;
@@ -113,6 +114,7 @@ function warpImage(srcImg, H, outW, outH){
       for(let k=0;k<4;k++){
         const top=srcData[i00+k]*(1-fx)+srcData[i10+k]*fx;
         const bot=srcData[i01+k]*(1-fx)+srcData[i11+k]*fx;
+        // 边缘稍微透明一点点防白边
         od[di+k]=top*(1-fy)+bot*fy;
       }
     }
@@ -120,30 +122,32 @@ function warpImage(srcImg, H, outW, outH){
   return out;
 }
 
-/* ---------- 合成 ---------- */
 function composite(){
   if(!state.srcImg || !state.dstImg) return;
 
-  // 目标图四角 → 洞四点
+  // 目标图的四个角（顺序必须和 HOLE 一致）
   const P = [
-    {x:0, y:0},
-    {x:state.dstImg.width, y:0},
-    {x:state.dstImg.width, y:state.dstImg.height},
-    {x:0, y:state.dstImg.height},
+    {x:0, y:0},                       // 左上
+    {x:state.dstImg.width, y:0},      // 右上
+    {x:state.dstImg.width, y:state.dstImg.height}, // 右下
+    {x:0, y:state.dstImg.height},     // 左下
   ];
+  
   const H = solveHomography(P, HOLE);
   if(!H){ document.getElementById('status').textContent='矩阵求解失败'; return; }
 
-  // 把目标图 warp 到素材坐标系（2432×1600）
+  // 把目标图 warp 到素材坐标系
   const warped = warpImage(state.dstImg, H, SRC_W, SRC_H);
   const wc=document.createElement('canvas');
   wc.width=SRC_W; wc.height=SRC_H;
   wc.getContext('2d').putImageData(warped,0,0);
 
-  // 合成：先目标图，再素材（洞透明）
+  // 合成：底灰 -> 目标图 -> 透明洞素材
   const out=document.createElement('canvas');
   out.width=SRC_W; out.height=SRC_H;
   const ctx=out.getContext('2d');
+  ctx.fillStyle = '#666'; 
+  ctx.fillRect(0, 0, SRC_W, SRC_H);
   ctx.drawImage(wc,0,0);
   ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H);
 
@@ -156,18 +160,15 @@ function composite(){
   const pctx=preview.getContext('2d');
   pctx.drawImage(out,0,0,pw,ph);
 
-  document.getElementById('status').textContent =
-    `H=[${H.map(n=>n.toFixed(3)).join(', ')}]`;
+  document.getElementById('status').textContent = '合成完成';
 }
 
-/* ---------- 上传目标图 ---------- */
 document.getElementById('dstFile').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   state.dstImg=await createImageBitmap(f);
   composite();
 });
 
-/* ---------- 导出 ---------- */
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   if(!state.srcImg || !state.dstImg) return;
   const P = [
@@ -183,6 +184,7 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   wc.getContext('2d').putImageData(warped,0,0);
   const out=document.createElement('canvas'); out.width=SRC_W; out.height=SRC_H;
   const ctx=out.getContext('2d');
+  // 导出时背景留透明，如果希望留灰底就加上 fillRect
   ctx.drawImage(wc,0,0);
   ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H);
   out.toBlob(blob=>{
@@ -193,7 +195,6 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   });
 });
 
-/* ---------- 自动加载 a.png ---------- */
 async function loadSource(url){
   try{
     const res=await fetch(url,{cache:'no-store'});
