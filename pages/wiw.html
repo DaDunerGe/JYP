@@ -2,319 +2,208 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>透视贴图（超强可视化终极版）</title>
+<title>what is wrong</title>
 <style>
-  body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd;display:flex;flex-direction:column;height:100vh}
-  header{padding:12px;background:#2a2a2a;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-  button{background:#3a6ea5;color:#fff;border:0;padding:8px 16px;border-radius:4px;cursor:pointer}
+  body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd}
+  header{padding:8px 12px;background:#2a2a2a;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  button{background:#3a6ea5;color:#fff;border:0;padding:6px 12px;border-radius:4px;cursor:pointer}
   button:hover{background:#4a7eb5}
-  .wrap{display:flex;gap:12px;padding:12px;flex:1;overflow:hidden}
-  .panel{background:#252525;border-radius:6px;padding:12px;flex:1;display:flex;flex-direction:column;min-width:0}
-  .panel h3{margin:0 0 12px;font-size:14px;color:#aaa}
-  .canvas-container{flex:1;overflow:auto;position:relative;display:flex;justify-content:center;align-items:flex-start;background:#111;border:1px solid #333}
-  canvas{display:block;max-width:100%;max-height:100%;background:#444;cursor:crosshair}
-  .hint{font-size:12px;color:#888;margin-top:8px}
+  .wrap{display:flex;gap:12px;padding:12px;flex-wrap:wrap}
+  .panel{background:#252525;border-radius:6px;padding:8px;flex:1;min-width:320px}
+  .panel h3{margin:0 0 6px;font-size:14px;color:#aaa}
+  canvas{display:block;width:100%;height:auto;background:#000}
+  .hint{font-size:12px;color:#888;margin-top:4px}
+  #preview{max-width:100%;background:#000}
 </style>
 </head>
 <body>
 <header>
   <label>目标图 <input type="file" id="dstFile" accept="image/*"></label>
-  <button id="exportBtn">生成并导出高清原图</button>
+  <button id="exportBtn">导出 .PNG</button>
   <span id="status" class="hint"></span>
 </header>
 
 <div class="wrap">
   <div class="panel">
-    <h3>1. 拖动红点对齐洞的四个角</h3>
-    <div class="canvas-container">
-      <canvas id="editCanvas"></canvas>
-    </div>
-    <div class="hint">注：目标图会透视变形贴入，红点顺序依次为 左上 → 右上 → 右下 → 左下</div>
-  </div>
-  <div class="panel">
-    <h3>2. 最终成品预览 (2432×1600)</h3>
-    <div class="canvas-container" style="align-items:center">
-      <canvas id="previewCanvas"></canvas>
-    </div>
+    <h3>合成预览</h3>
+    <canvas id="preview"></canvas>
   </div>
 </div>
 
 <script>
+/* 素材尺寸与洞四点（素材坐标系，顺序 左上→右上→右下→左下） */
 const SRC_W = 2432, SRC_H = 1600;
-// 你的原始洞坐标
 const HOLE = [
-  {x: 884,  y: 377}, // 左上
-  {x: 1669, y: 405}, // 右上
-  {x: 1655, y: 948}, // 右下
-  {x: 868,  y: 666}, // 左下
+  {x: 874,  y: 367},
+  {x: 1679, y: 395},
+  {x: 1665, y: 958},
+  {x: 858,  y: 945},
 ];
 
-const state = {
-  srcImg: null,
-  dstImg: null,
-  // 默认将目标图的四角放在洞的附近，方便拖拽
-  dstPts: [
-    {x: 884,  y: 377}, 
-    {x: 1669, y: 405}, 
-    {x: 1655, y: 948}, 
-    {x: 868,  y: 666}
-  ],
-  draggingIdx: -1
-};
+const state = { srcImg: null, dstImg: null };
 
-// --- 单应性计算 ---
-function solveHomography(src, dst) {
-  const A = [], b = [];
-  for (let i = 0; i < 4; i++) {
-    const { x, y } = src[i], { x: u, y: v } = dst[i];
-    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
-    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+/* ---------- 单应性 ---------- */
+function solveHomography(src, dst){
+  const A=[], b=[];
+  for(let i=0;i<4;i++){
+    const {x,y}=src[i], {x:u,y:v}=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v);
   }
-  const n = 8;
-  for (let i = 0; i < n; i++) {
-    let p = i;
-    for (let j = i + 1; j < n; j++) if (Math.abs(A[j][i]) > Math.abs(A[p][i])) p = j;
-    [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
-    if (Math.abs(A[i][i]) < 1e-12) return null;
-    for (let j = i + 1; j < n; j++) {
-      const f = A[j][i] / A[i][i];
-      for (let k = i; k < n; k++) A[j][k] -= f * A[i][k];
-      b[j] -= f * b[i];
+  const n=8;
+  for(let i=0;i<n;i++){
+    let p=i;
+    for(let j=i+1;j<n;j++) if(Math.abs(A[j][i])>Math.abs(A[p][i])) p=j;
+    [A[i],A[p]]=[A[p],A[i]]; [b[i],b[p]]=[b[p],b[i]];
+    if(Math.abs(A[i][i])<1e-12) return null;
+    for(let j=i+1;j<n;j++){
+      const f=A[j][i]/A[i][i];
+      for(let k=i;k<n;k++) A[j][k]-=f*A[i][k];
+      b[j]-=f*b[i];
     }
   }
-  const h = new Array(8);
-  for (let i = n - 1; i >= 0; i--) {
-    let s = b[i];
-    for (let j = i + 1; j < n; j++) s -= A[i][j] * h[j];
-    h[i] = s / A[i][i];
+  const h=new Array(8);
+  for(let i=n-1;i>=0;i--){
+    let s=b[i];
+    for(let j=i+1;j<n;j++) s-=A[i][j]*h[j];
+    h[i]=s/A[i][i];
   }
-  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+  return [h[0],h[1],h[2], h[3],h[4],h[5], h[6],h[7],1];
 }
 
-function invert3x3(m) {
-  const [a, b, c, d, e, f, g, h, i] = m;
-  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
-  const det = a * A + b * B + c * C;
-  if (Math.abs(det) < 1e-12) return null;
-  const inv = 1 / det;
+function invert3x3(m){
+  const [a,b,c,d,e,f,g,h,i]=m;
+  const A=e*i-f*h, B=-(d*i-f*g), C=d*h-e*g;
+  const det=a*A+b*B+c*C;
+  if(Math.abs(det)<1e-12) return null;
+  const inv=1/det;
   return [
-    A * inv, (c * h - b * i) * inv, (b * f - c * e) * inv,
-    B * inv, (a * i - c * g) * inv, (c * d - a * f) * inv,
-    C * inv, (b * g - a * h) * inv, (a * e - b * d) * inv
+    A*inv, (c*h-b*i)*inv, (b*f-c*e)*inv,
+    B*inv, (a*i-c*g)*inv, (c*d-a*f)*inv,
+    C*inv, (b*g-a*h)*inv, (a*e-b*d)*inv
   ];
 }
 
-// --- 图像扭曲 ---
-function warpImage(srcImg, H, outW, outH) {
-  const sc = document.createElement('canvas');
-  sc.width = srcImg.width; sc.height = srcImg.height;
-  const sctx = sc.getContext('2d', { willReadFrequently: true });
-  sctx.drawImage(srcImg, 0, 0);
-  const srcData = sctx.getImageData(0, 0, sc.width, sc.height).data;
+/* ---------- warp：把 srcImg 按 H 画到 outW×outH ---------- */
+function warpImage(srcImg, H, outW, outH){
+  const sc=document.createElement('canvas');
+  sc.width=srcImg.width; sc.height=srcImg.height;
+  const sctx=sc.getContext('2d',{willReadFrequently:true});
+  sctx.drawImage(srcImg,0,0);
+  const srcData=sctx.getImageData(0,0,sc.width,sc.height).data;
 
-  const out = new ImageData(outW, outH);
-  const Hinv = invert3x3(H);
-  if (!Hinv) return out;
-  const od = out.data;
+  const out=new ImageData(outW,outH);
+  const Hinv=invert3x3(H);
+  if(!Hinv) return out;
+  const od=out.data;
 
-  for (let v = 0; v < outH; v++) {
-    for (let u = 0; u < outW; u++) {
-      const w = Hinv[6] * u + Hinv[7] * v + Hinv[8];
-      if (Math.abs(w) < 1e-12) continue;
-      const x = (Hinv[0] * u + Hinv[1] * v + Hinv[2]) / w;
-      const y = (Hinv[3] * u + Hinv[4] * v + Hinv[5]) / w;
-      if (x < 0 || y < 0 || x >= sc.width || y >= sc.height) continue;
-      
-      const x0 = Math.floor(x), y0 = Math.floor(y);
-      const x1 = Math.min(x0 + 1, sc.width - 1), y1 = Math.min(y0 + 1, sc.height - 1);
-      const fx = x - x0, fy = y - y0;
-      const i00 = (y0 * sc.width + x0) * 4, i10 = (y0 * sc.width + x1) * 4;
-      const i01 = (y1 * sc.width + x0) * 4, i11 = (y1 * sc.width + x1) * 4;
-      const di = (v * outW + u) * 4;
-      for (let k = 0; k < 4; k++) {
-        const top = srcData[i00 + k] * (1 - fx) + srcData[i10 + k] * fx;
-        const bot = srcData[i01 + k] * (1 - fx) + srcData[i11 + k] * fx;
-        od[di + k] = top * (1 - fy) + bot * fy;
+  for(let v=0;v<outH;v++){
+    for(let u=0;u<outW;u++){
+      const w=Hinv[6]*u+Hinv[7]*v+Hinv[8];
+      if(Math.abs(w)<1e-12) continue;
+      const x=(Hinv[0]*u+Hinv[1]*v+Hinv[2])/w;
+      const y=(Hinv[3]*u+Hinv[4]*v+Hinv[5])/w;
+      if(x<0||y<0||x>=sc.width||y>=sc.height) continue;
+      const x0=Math.floor(x), y0=Math.floor(y);
+      const x1=Math.min(x0+1,sc.width-1), y1=Math.min(y0+1,sc.height-1);
+      const fx=x-x0, fy=y-y0;
+      const i00=(y0*sc.width+x0)*4, i10=(y0*sc.width+x1)*4;
+      const i01=(y1*sc.width+x0)*4, i11=(y1*sc.width+x1)*4;
+      const di=(v*outW+u)*4;
+      for(let k=0;k<4;k++){
+        const top=srcData[i00+k]*(1-fx)+srcData[i10+k]*fx;
+        const bot=srcData[i01+k]*(1-fx)+srcData[i11+k]*fx;
+        od[di+k]=top*(1-fy)+bot*fy;
       }
     }
   }
   return out;
 }
 
-// --- 核心合成逻辑 ---
-function render() {
-  if (!state.srcImg || !state.dstImg) return;
+/* ---------- 合成 ---------- */
+function composite(){
+  if(!state.srcImg || !state.dstImg) return;
 
-  const dstW = state.dstImg.width;
-  const dstH = state.dstImg.height;
+  // 目标图四角 → 洞四点
+  const P = [
+    {x:0, y:0},
+    {x:state.dstImg.width, y:0},
+    {x:state.dstImg.width, y:state.dstImg.height},
+    {x:0, y:state.dstImg.height},
+  ];
+  const H = solveHomography(P, HOLE);
+  if(!H){ document.getElementById('status').textContent='矩阵求解失败'; return; }
 
-  // 目标图四角（拖动后的位置）
-  const SrcPts = state.dstPts;
-  
-  // 映射到洞的坐标
-  const H = solveHomography(
-    [{x:0,y:0}, {x:dstW,y:0}, {x:dstW,y:dstH}, {x:0,y:dstH}], 
-    SrcPts
-  );
-  
-  if (!H) return;
+  // 把目标图 warp 到素材坐标系（2432×1600）
+  const warped = warpImage(state.dstImg, H, SRC_W, SRC_H);
+  const wc=document.createElement('canvas');
+  wc.width=SRC_W; wc.height=SRC_H;
+  wc.getContext('2d').putImageData(warped,0,0);
 
-  // 将目标图透视映射到素材大小的画布
-  const warpedData = warpImage(state.dstImg, H, SRC_W, SRC_H);
-  const wc = document.createElement('canvas');
-  wc.width = SRC_W; wc.height = SRC_H;
-  wc.getContext('2d').putImageData(warpedData, 0, 0);
+  // 合成：先目标图，再素材（洞透明）
+  const out=document.createElement('canvas');
+  out.width=SRC_W; out.height=SRC_H;
+  const ctx=out.getContext('2d');
+  ctx.drawImage(wc,0,0);
+  ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H);
 
-  // 最终成品：底图 + 素材
-  const out = document.createElement('canvas');
-  out.width = SRC_W; out.height = SRC_H;
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = '#444'; // 预览底色
-  ctx.fillRect(0, 0, SRC_W, SRC_H);
-  ctx.drawImage(wc, 0, 0);
-  ctx.drawImage(state.srcImg, 0, 0, SRC_W, SRC_H);
+  // 预览缩放
+  const maxW=900;
+  const s=Math.min(1, maxW/SRC_W);
+  const pw=Math.round(SRC_W*s), ph=Math.round(SRC_H*s);
+  const preview=document.getElementById('preview');
+  preview.width=pw; preview.height=ph;
+  const pctx=preview.getContext('2d');
+  pctx.drawImage(out,0,0,pw,ph);
 
-  // 渲染到右侧预览
-  const preview = document.getElementById('previewCanvas');
-  const pctx = preview.getContext('2d');
-  const pScale = 600 / SRC_W;
-  preview.width = SRC_W * pScale;
-  preview.height = SRC_H * pScale;
-  pctx.drawImage(out, 0, 0, preview.width, preview.height);
-
-  // 暂存输出画布供导出
-  state.outCanvas = out;
-
-  // 渲染左侧编辑区（在素材上画红点）
-  drawEditor();
+  document.getElementById('status').textContent =
+    `H=[${H.map(n=>n.toFixed(3)).join(', ')}]`;
 }
 
-// --- 左侧交互编辑器 ---
-function drawEditor() {
-  const canvas = document.getElementById('editCanvas');
-  const ctx = canvas.getContext('2d');
-  
-  // 设置画布尺寸适配屏幕
-  const maxW = 800;
-  const scale = Math.min(1, maxW / SRC_W);
-  if(canvas.width !== SRC_W * scale) {
-    canvas.width = SRC_W * scale;
-    canvas.height = SRC_H * scale;
-  }
-
-  // 缩放绘制素材
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(state.srcImg, 0, 0, canvas.width, canvas.height);
-
-  // 绘制目标图的虚影（为了方便你看到拖拽后的效果）
-  if(state.dstImg) {
-    ctx.globalAlpha = 0.5;
-    ctx.save();
-    ctx.beginPath();
-    const p = state.dstPts;
-    ctx.moveTo(p[0].x*scale, p[0].y*scale);
-    ctx.lineTo(p[1].x*scale, p[1].y*scale);
-    ctx.lineTo(p[2].x*scale, p[2].y*scale);
-    ctx.lineTo(p[3].x*scale, p[3].y*scale);
-    ctx.closePath();
-    ctx.clip();
-    // 这里简化处理，直接画个矩形示意
-    ctx.fillStyle = '#fa4';
-    ctx.fill();
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  }
-
-  // 画4个控制点
-  state.dstPts.forEach((pt, i) => {
-    ctx.beginPath();
-    ctx.arc(pt.x * scale, pt.y * scale, 8, 0, Math.PI * 2);
-    ctx.fillStyle = '#ff3333';
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // 写序号
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(i+1, pt.x * scale + 10, pt.y * scale - 10);
-  });
-}
-
-// --- 鼠标拖拽交互 ---
-function getMousePos(canvas, e) {
-  const rect = canvas.getBoundingClientRect();
-  const scale = Math.min(1, 800 / SRC_W);
-  return {
-    x: (e.clientX - rect.left) * (canvas.width / rect.width) / scale,
-    y: (e.clientY - rect.top) * (canvas.height / rect.height) / scale
-  };
-}
-
-document.getElementById('editCanvas').addEventListener('pointerdown', e => {
-  if(!state.dstImg) return;
-  const canvas = e.target;
-  const pos = getMousePos(canvas, e);
-  const scale = Math.min(1, 800 / SRC_W);
-  
-  let best = -1, minD = Infinity;
-  state.dstPts.forEach((pt, i) => {
-    const d = (pt.x - pos.x)**2 + (pt.y - pos.y)**2;
-    if(d < minD) { minD = d; best = i; }
-  });
-  
-  if(minD < (30/scale)**2) {
-    state.draggingIdx = best;
-    canvas.setPointerCapture(e.pointerId);
-  }
+/* ---------- 上传目标图 ---------- */
+document.getElementById('dstFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  state.dstImg=await createImageBitmap(f);
+  composite();
 });
 
-document.getElementById('editCanvas').addEventListener('pointermove', e => {
-  if(state.draggingIdx === -1) return;
-  const pos = getMousePos(e.target, e);
-  state.dstPts[state.draggingIdx] = pos;
-  render();
-});
-
-document.getElementById('editCanvas').addEventListener('pointerup', e => {
-  state.draggingIdx = -1;
-});
-
-// --- 上传与导出 ---
-document.getElementById('dstFile').addEventListener('change', async e => {
-  const f = e.target.files[0]; if (!f) return;
-  state.dstImg = await createImageBitmap(f);
-  // 默认把目标图的四个角重设为洞的位置
-  state.dstPts = HOLE.map(p => ({...p}));
-  render();
-});
-
-document.getElementById('exportBtn').addEventListener('click', () => {
-  if (!state.outCanvas) return;
-  state.outCanvas.toBlob(blob => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = '完美透视合成.png';
+/* ---------- 导出 ---------- */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(!state.srcImg || !state.dstImg) return;
+  const P = [
+    {x:0, y:0},
+    {x:state.dstImg.width, y:0},
+    {x:state.dstImg.width, y:state.dstImg.height},
+    {x:0, y:state.dstImg.height},
+  ];
+  const H = solveHomography(P, HOLE);
+  if(!H) return alert('矩阵求解失败');
+  const warped = warpImage(state.dstImg, H, SRC_W, SRC_H);
+  const wc=document.createElement('canvas'); wc.width=SRC_W; wc.height=SRC_H;
+  wc.getContext('2d').putImageData(warped,0,0);
+  const out=document.createElement('canvas'); out.width=SRC_W; out.height=SRC_H;
+  const ctx=out.getContext('2d');
+  ctx.drawImage(wc,0,0);
+  ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H);
+  out.toBlob(blob=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='composite.png';
     a.click();
   });
 });
 
-async function loadSource(url) {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blob = await res.blob();
-    state.srcImg = await createImageBitmap(blob);
-    // 初始化画布
-    const canvas = document.getElementById('editCanvas');
-    const scale = Math.min(1, 800 / SRC_W);
-    canvas.width = SRC_W * scale;
-    canvas.height = SRC_H * scale;
-    drawEditor();
-    document.getElementById('status').textContent = 'a.png 已加载，请上传目标图';
-  } catch (err) {
-    document.getElementById('status').textContent = `a.png 加载失败（${err.message}）`;
+/* ---------- 自动加载 a.png ---------- */
+async function loadSource(url){
+  try{
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const blob=await res.blob();
+    state.srcImg=await createImageBitmap(blob);
+    document.getElementById('status').textContent='素材 已加载，请上传目标图';
+  }catch(err){
+    document.getElementById('status').textContent=
+      `素材 加载失败`;
   }
 }
 loadSource('a.png');
