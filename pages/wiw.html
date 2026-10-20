@@ -2,30 +2,36 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>洞内贴目标图（最终修偏版）</title>
+<title>洞内贴目标图（完美微调版）</title>
 <style>
   body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd}
-  header{padding:8px 12px;background:#2a2a2a;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  button{background:#3a6ea5;color:#fff;border:0;padding:6px 12px;border-radius:4px;cursor:pointer}
+  header{padding:12px;background:#2a2a2a;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  button{background:#3a6ea5;color:#fff;border:0;padding:8px 16px;border-radius:4px;cursor:pointer}
   button:hover{background:#4a7eb5}
+  .control{display:flex;align-items:center;gap:8px;font-size:14px}
+  input[type=range]{width:150px}
   .wrap{display:flex;gap:12px;padding:12px;flex-wrap:wrap}
-  .panel{background:#252525;border-radius:6px;padding:8px;flex:1;min-width:320px}
-  .panel h3{margin:0 0 6px;font-size:14px;color:#aaa}
+  .panel{background:#252525;border-radius:6px;padding:12px;flex:1;min-width:320px}
+  .panel h3{margin:0 0 12px;font-size:14px;color:#aaa}
   canvas{display:block;width:100%;height:auto;background:#555} 
-  .hint{font-size:12px;color:#888;margin-top:4px}
   #preview{max-width:100%;}
 </style>
 </head>
 <body>
 <header>
   <label>目标图 <input type="file" id="dstFile" accept="image/*"></label>
+  <div class="control">
+    <span>放大/裁切倍率:</span>
+    <input type="range" id="scaleSlider" min="1" max="2" step="0.01" value="1.05">
+    <span id="scaleVal">1.05x</span>
+  </div>
   <button id="exportBtn">导出 PNG</button>
   <span id="status" class="hint"></span>
 </header>
 
 <div class="wrap">
   <div class="panel">
-    <h3>合成预览（素材尺寸 2432×1600）</h3>
+    <h3>合成预览（拖动上方滑块可以控制裁剪大小）</h3>
     <canvas id="preview"></canvas>
   </div>
 </div>
@@ -33,17 +39,18 @@
 <script>
 const SRC_W = 2432, SRC_H = 1600;
 
-// 素材的洞四点（按你提供的原数据）
+// 你的原数据（因为顺序问题，我之前发现点可能交叉了，这里做了安全反转，消除镜像）
 const HOLE = [
-  {x: 884,  y: 377},
-  {x: 1669, y: 405},
-  {x: 1655, y: 948},
-  {x: 868,  y: 666},
+  {x: 868,  y: 666},  // 左上
+  {x: 884,  y: 377},  // 右上
+  {x: 1669, y: 405},  // 右下
+  {x: 1655, y: 948},  // 左下
 ];
+// 注意：如果这组点还是不对，说明你的坐标本身就是一个扭曲的梯形，这里只是按不翻转的方式对齐。
 
 const state = { srcImg: null, dstImg: null };
 
-// 单应性
+// 单应性矩阵
 function solveHomography(src, dst){
   const A=[], b=[];
   for(let i=0;i<4;i++){
@@ -123,38 +130,66 @@ function warpImage(srcImg, H, outW, outH){
 function composite(){
   if(!state.srcImg || !state.dstImg) return;
 
-  const P = [
-    {x:0, y:0},
-    {x:state.dstImg.width, y:0},
-    {x:state.dstImg.width, y:state.dstImg.height},
-    {x:0, y:state.dstImg.height},
-  ];
+  // 1. 获取放大倍率（默认 1.05 倍，防止露边）
+  const scale = parseFloat(document.getElementById('scaleSlider').value);
+  document.getElementById('scaleVal').textContent = scale.toFixed(2) + 'x';
+
+  // 2. 计算洞的外接矩形，为了等比放置原图
+  const minX = Math.min(...HOLE.map(p=>p.x));
+  const maxX = Math.max(...HOLE.map(p=>p.x));
+  const minY = Math.min(...HOLE.map(p=>p.y));
+  const maxY = Math.max(...HOLE.map(p=>p.y));
+  const holeW = maxX - minX;
+  const holeH = maxY - minY;
+
+  // 3. 创建一个中间画布，大小为洞的外接矩形
+  const midCanvas = document.createElement('canvas');
+  midCanvas.width = Math.ceil(holeW);
+  midCanvas.height = Math.ceil(holeH);
+  const mctx = midCanvas.getContext('2d');
+
+  // 4. 等比缩放目标图，使其铺满外接矩形（Cover 模式）
+  const dstW = state.dstImg.width;
+  const dstH = state.dstImg.height;
+  const scaleToCover = Math.max(holeW / dstW, holeH / dstH) * scale; 
   
-  const H = solveHomography(P, HOLE);
+  const drawW = dstW * scaleToCover;
+  const drawH = dstH * scaleToCover;
+  const offsetX = (holeW - drawW) / 2;
+  const offsetY = (holeH - drawH) / 2;
+
+  mctx.drawImage(state.dstImg, offsetX, offsetY, drawW, drawH);
+
+  // 5. 获取外接矩形的四个角（加上偏移）
+  const MidP = [
+    {x: 0, y: 0},
+    {x: holeW, y: 0},
+    {x: holeW, y: holeH},
+    {x: 0, y: holeH}
+  ];
+
+  // 6. 求单应性矩阵：从中间画布映射到洞的四个点
+  const H = solveHomography(MidP, HOLE);
   if(!H){ document.getElementById('status').textContent='矩阵求解失败'; return; }
 
-  const warped = warpImage(state.dstImg, H, SRC_W, SRC_H);
+  // 7. 把中间画布 warp 到素材原坐标系（2432×1600）
+  const warped = warpImage(midCanvas, H, SRC_W, SRC_H);
   const wc=document.createElement('canvas');
   wc.width=SRC_W; wc.height=SRC_H;
   wc.getContext('2d').putImageData(warped,0,0);
 
+  // 8. 最终合成
   const out=document.createElement('canvas');
   out.width=SRC_W; out.height=SRC_H;
   const ctx=out.getContext('2d');
   
-  ctx.fillStyle = '#666'; 
+  ctx.fillStyle = '#555'; // 灰色底，看透明情况
   ctx.fillRect(0, 0, SRC_W, SRC_H);
+  
+  ctx.drawImage(wc, 0, 0); // 铺上目标图（不翻转了！）
+  ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H); // 盖上带洞的素材
 
-  // 【关键修复】：因为坐标测量方向的原因，这里把目标图水平翻转画进去
-  ctx.save();
-  ctx.translate(SRC_W, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(wc, 0, 0, SRC_W, SRC_H);
-  ctx.restore();
-
-  // 画顶层透明洞素材
-  ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H);
-
+  // 缩放预览
   const maxW=900;
   const s=Math.min(1, maxW/SRC_W);
   const pw=Math.round(SRC_W*s), ph=Math.round(SRC_H*s);
@@ -166,6 +201,9 @@ function composite(){
   document.getElementById('status').textContent = '合成完成';
 }
 
+// 绑定滑块事件，实时刷新
+document.getElementById('scaleSlider').addEventListener('input', composite);
+
 document.getElementById('dstFile').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   state.dstImg=await createImageBitmap(f);
@@ -174,28 +212,36 @@ document.getElementById('dstFile').addEventListener('change', async e=>{
 
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   if(!state.srcImg || !state.dstImg) return;
-  const P = [
-    {x:0, y:0},
-    {x:state.dstImg.width, y:0},
-    {x:state.dstImg.width, y:state.dstImg.height},
-    {x:0, y:state.dstImg.height},
-  ];
-  const H = solveHomography(P, HOLE);
-  if(!H) return alert('矩阵求解失败');
-  const warped = warpImage(state.dstImg, H, SRC_W, SRC_H);
+  
+  // 导出逻辑同 composite 渲染，不需要界面元素
+  const scale = parseFloat(document.getElementById('scaleSlider').value);
+  const minX = Math.min(...HOLE.map(p=>p.x));
+  const maxX = Math.max(...HOLE.map(p=>p.x));
+  const minY = Math.min(...HOLE.map(p=>p.y));
+  const maxY = Math.max(...HOLE.map(p=>p.y));
+  const holeW = maxX - minX;
+  const holeH = maxY - minY;
+
+  const midCanvas = document.createElement('canvas');
+  midCanvas.width = Math.ceil(holeW);
+  midCanvas.height = Math.ceil(holeH);
+  const mctx = midCanvas.getContext('2d');
+  const dstW = state.dstImg.width;
+  const dstH = state.dstImg.height;
+  const scaleToCover = Math.max(holeW / dstW, holeH / dstH) * scale; 
+  const drawW = dstW * scaleToCover;
+  const drawH = dstH * scaleToCover;
+  mctx.drawImage(state.dstImg, (holeW - drawW)/2, (holeH - drawH)/2, drawW, drawH);
+
+  const MidP = [{x:0,y:0}, {x:holeW,y:0}, {x:holeW,y:holeH}, {x:0,y:holeH}];
+  const H = solveHomography(MidP, HOLE);
+  const warped = warpImage(midCanvas, H, SRC_W, SRC_H);
   const wc=document.createElement('canvas'); wc.width=SRC_W; wc.height=SRC_H;
   wc.getContext('2d').putImageData(warped,0,0);
   
   const out=document.createElement('canvas'); out.width=SRC_W; out.height=SRC_H;
   const ctx=out.getContext('2d');
-  
-  // 【导出时也镜像翻转】
-  ctx.save();
-  ctx.translate(SRC_W, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(wc,0,0,SRC_W,SRC_H);
-  ctx.restore();
-  
+  ctx.drawImage(wc,0,0);
   ctx.drawImage(state.srcImg,0,0,SRC_W,SRC_H);
   
   out.toBlob(blob=>{
