@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>洞内贴目标图（遮罩不拉伸版）</title>
+<title>透视贴合（完美无损版）</title>
 <style>
   body{font-family:system-ui,sans-serif;margin:0;background:#1e1e1e;color:#ddd}
   header{padding:12px;background:#2a2a2a;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
@@ -13,7 +13,7 @@
   .wrap{display:flex;gap:12px;padding:12px;flex-wrap:wrap}
   .panel{background:#252525;border-radius:6px;padding:12px;flex:1;min-width:320px}
   .panel h3{margin:0 0 12px;font-size:14px;color:#aaa}
-  canvas{display:block;width:100%;height:auto;background:#555} 
+  canvas{display:block;width:100%;height:auto;background:#444} 
   #preview{max-width:100%;}
 </style>
 </head>
@@ -21,7 +21,7 @@
 <header>
   <label>目标图 <input type="file" id="dstFile" accept="image/*"></label>
   <div class="control">
-    <span>原图缩放/移动:</span>
+    <span>大小微调:</span>
     <input type="range" id="scaleSlider" min="0.5" max="2" step="0.01" value="1.0">
     <span id="scaleVal">1.00x</span>
   </div>
@@ -31,7 +31,7 @@
 
 <div class="wrap">
   <div class="panel">
-    <h3>合成预览（调节滑块让目标图填满洞）</h3>
+    <h3>合成预览（透视变形，保持素材斜度）</h3>
     <canvas id="preview"></canvas>
   </div>
 </div>
@@ -39,15 +39,65 @@
 <script>
 const SRC_W = 2432, SRC_H = 1600;
 
-// 【完全保留你最初给我的原始数据，绝不修改】
+// 【保持原始坐标】 左上、右上、右下、左下
 const HOLE = [
-  {x: 884,  y: 377},   // 1 左上
-  {x: 1669, y: 405},   // 2 右上
-  {x: 1655, y: 948},   // 3 右下
-  {x: 868,  y: 666},   // 4 左下
+  {x: 884,  y: 377},
+  {x: 1669, y: 405},
+  {x: 1655, y: 948},
+  {x: 868,  y: 666},
 ];
 
 const state = { srcImg: null, dstImg: null };
+
+// --- 核心：利用 Canvas 2D 的三角形仿射变换来模拟透视 ---
+function drawPerspectiveTriangle(ctx, img, p0, p1, p2, u0, u1, u2) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.closePath();
+  ctx.clip();
+
+  // 计算变换矩阵
+  let x0 = u0.x, y0 = u0.y;
+  let x1 = u1.x, y1 = u1.y;
+  let x2 = u2.x, y2 = u2.y;
+  
+  let denom = x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0;
+  if (denom === 0) { ctx.restore(); return; }
+
+  let a = -(y0 * (x2 - x1) - y1 * x2 + y2 * x1 + (y1 - y2) * x0) / denom;
+  let b = (y0 * (p2.x - p1.x) - y1 * p2.x + y2 * p1.x + (y1 - y2) * p0.x) / denom;
+  let c = (x0 * (p2.x - p1.x) - x1 * p2.x + x2 * p1.x + (x1 - x2) * p0.x) / denom;
+  let d = -(x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0) / denom;
+  let e = (x0 * (p2.y - p1.y) - x1 * p2.y + x2 * p1.y + (x1 - x2) * p0.y) / denom;
+  let f = (y0 * (p2.y - p1.y) - y1 * p2.y + y2 * p1.y + (y1 - y2) * p0.y) / denom;
+  let g = (x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0) / denom;
+
+  ctx.transform(a, d, b, e, c, f);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
+function warpImagePerspective(srcImg, targetPts, drawW, drawH) {
+  const canvas = document.createElement('canvas');
+  canvas.width = SRC_W;
+  canvas.height = SRC_H;
+  const ctx = canvas.getContext('2d');
+
+  // 原图的四个角
+  const u0 = {x: 0, y: 0};
+  const u1 = {x: drawW, y: 0};
+  const u2 = {x: drawW, y: drawH};
+  const u3 = {x: 0, y: drawH};
+
+  // 拆成两个三角形，分别做仿射透视映射
+  drawPerspectiveTriangle(ctx, srcImg, targetPts[0], targetPts[1], targetPts[2], u0, u1, u2);
+  drawPerspectiveTriangle(ctx, srcImg, targetPts[0], targetPts[2], targetPts[3], u0, u2, u3);
+
+  return canvas;
+}
 
 function composite(){
   if(!state.srcImg || !state.dstImg) return;
@@ -59,44 +109,36 @@ function composite(){
   out.width = SRC_W; out.height = SRC_H;
   const ctx = out.getContext('2d');
 
-  // 1. 画深灰色背景（用来检查边缘是不是对齐了）
+  // 灰色背景
   ctx.fillStyle = '#444';
   ctx.fillRect(0, 0, SRC_W, SRC_H);
 
-  // 2. 把原图（目标图）等比缩放，不拉伸变形，只计算位置
   const dstW = state.dstImg.width;
   const dstH = state.dstImg.height;
-  
-  // 为了让原图能覆盖整个洞，先算一下洞的中心
-  const cx = (HOLE[0].x + HOLE[2].x) / 2;
-  const cy = (HOLE[0].y + HOLE[2].y) / 2;
 
-  // 目标图的绘制宽高（乘以滑块缩放率）
-  const drawW = dstW * scale;
-  const drawH = dstH * scale;
-  
-  // 计算绘制起始坐标，让目标图中心对齐洞的中心
-  const dx = cx - drawW / 2;
-  const dy = cy - drawH / 2;
+  // 1. 计算洞的外接矩形（用于确定图片初始缩放）
+  const minX = Math.min(...HOLE.map(p=>p.x));
+  const maxX = Math.max(...HOLE.map(p=>p.x));
+  const minY = Math.min(...HOLE.map(p=>p.y));
+  const maxY = Math.max(...HOLE.map(p=>p.y));
+  const bboxW = maxX - minX;
+  const bboxH = maxY - minY;
 
-  // 3. 【核心遮罩】把 ctx 裁剪成这个四边形的形状
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(HOLE[0].x, HOLE[0].y);
-  ctx.lineTo(HOLE[1].x, HOLE[1].y);
-  ctx.lineTo(HOLE[2].x, HOLE[2].y);
-  ctx.lineTo(HOLE[3].x, HOLE[3].y);
-  ctx.closePath();
-  ctx.clip(); // 只有在这个多边形内的内容才会显示
+  // 2. 计算图片为了覆盖洞，需要的宽高 (配合滑块微调)
+  const scaleToFill = Math.max(bboxW / dstW, bboxH / dstH) * scale;
+  const drawW = dstW * scaleToFill;
+  const drawH = dstH * scaleToFill;
 
-  // 4. 画目标图（由于被 clip 了，只有洞里的部分会被画出来，图形完全不变形）
-  ctx.drawImage(state.dstImg, dx, dy, drawW, drawH);
-  ctx.restore();
+  // 3. 执行透视变形（把原图拉伸/折进洞里）
+  const warpedCanvas = warpImagePerspective(state.dstImg, HOLE, drawW, drawH);
 
-  // 5. 把带洞的素材盖在最上面（原尺寸，不处理）
+  // 4. 画变形后的图（由于 warpedCanvas 是原尺寸，所以画的时候按原尺寸画）
+  ctx.drawImage(warpedCanvas, 0, 0);
+
+  // 5. 盖上透明洞素材
   ctx.drawImage(state.srcImg, 0, 0, SRC_W, SRC_H);
 
-  // 6. 预览缩放
+  // 预览
   const maxW = 900;
   const s = Math.min(1, maxW / SRC_W);
   const pw = Math.round(SRC_W * s), ph = Math.round(SRC_H * s);
@@ -108,7 +150,6 @@ function composite(){
   document.getElementById('status').textContent = '合成完成';
 }
 
-// 实时更新
 document.getElementById('scaleSlider').addEventListener('input', composite);
 
 document.getElementById('dstFile').addEventListener('change', async e=>{
@@ -124,23 +165,20 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   const out = document.createElement('canvas'); out.width = SRC_W; out.height = SRC_H;
   const ctx = out.getContext('2d');
   
-  // 透明背景
   const dstW = state.dstImg.width, dstH = state.dstImg.height;
-  const cx = (HOLE[0].x + HOLE[2].x) / 2, cy = (HOLE[0].y + HOLE[2].y) / 2;
-  const drawW = dstW * scale, drawH = dstH * scale;
+  const minX = Math.min(...HOLE.map(p=>p.x));
+  const maxX = Math.max(...HOLE.map(p=>p.x));
+  const minY = Math.min(...HOLE.map(p=>p.y));
+  const maxY = Math.max(...HOLE.map(p=>p.y));
+  const bboxW = maxX - minX;
+  const bboxH = maxY - minY;
+
+  const scaleToFill = Math.max(bboxW / dstW, bboxH / dstH) * scale;
+  const drawW = dstW * scaleToFill, drawH = dstH * scaleToFill;
+
+  const warpedCanvas = warpImagePerspective(state.dstImg, HOLE, drawW, drawH);
   
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(HOLE[0].x, HOLE[0].y);
-  ctx.lineTo(HOLE[1].x, HOLE[1].y);
-  ctx.lineTo(HOLE[2].x, HOLE[2].y);
-  ctx.lineTo(HOLE[3].x, HOLE[3].y);
-  ctx.closePath();
-  ctx.clip();
-  
-  ctx.drawImage(state.dstImg, cx - drawW/2, cy - drawH/2, drawW, drawH);
-  ctx.restore();
-  
+  ctx.drawImage(warpedCanvas, 0, 0);
   ctx.drawImage(state.srcImg, 0, 0, SRC_W, SRC_H);
   
   out.toBlob(blob=>{
