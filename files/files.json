@@ -102,6 +102,11 @@
             "type": "image"
           },
           {
+            "name": "改了.png",
+            "path": "图片/表情包/改了.png",
+            "type": "image"
+          },
+          {
             "name": "核裂变.jpg",
             "path": "图片/表情包/核裂变.jpg",
             "type": "image"
