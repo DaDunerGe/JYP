@@ -129,6 +129,11 @@
         "type": "image"
       },
       {
+        "name": "face.png",
+        "path": "图片/face.png",
+        "type": "image"
+      },
+      {
         "name": "face壁纸.png",
         "path": "图片/face壁纸.png",
         "type": "image"
