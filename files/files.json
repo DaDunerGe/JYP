@@ -57,6 +57,11 @@
             "type": "image"
           },
           {
+            "name": "30.jpg",
+            "path": "图片/表情包/30.jpg",
+            "type": "image"
+          },
+          {
             "name": "face一个我就这样.png",
             "path": "图片/表情包/face一个我就这样.png",
             "type": "image"
@@ -241,6 +246,11 @@
       {
         "name": "桨移萍.png",
         "path": "图片/桨移萍.png",
+        "type": "image"
+      },
+      {
+        "name": "正高级化学老师.png",
+        "path": "图片/正高级化学老师.png",
         "type": "image"
       },
       {
