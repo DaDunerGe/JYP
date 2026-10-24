@@ -97,6 +97,11 @@
             "type": "image"
           },
           {
+            "name": "核裂变.jpg",
+            "path": "图片/表情包/核裂变.jpg",
+            "type": "image"
+          },
+          {
             "name": "禁止face.png",
             "path": "图片/表情包/禁止face.png",
             "type": "image"
