@@ -107,6 +107,11 @@
             "type": "image"
           },
           {
+            "name": "拿笔拿本.png",
+            "path": "图片/表情包/拿笔拿本.png",
+            "type": "image"
+          },
+          {
             "name": "改了.png",
             "path": "图片/表情包/改了.png",
             "type": "image"
