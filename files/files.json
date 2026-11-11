@@ -396,6 +396,11 @@
         "type": "text"
       },
       {
+        "name": "改试卷.txt",
+        "path": "老蒋语录/改试卷.txt",
+        "type": "text"
+      },
+      {
         "name": "氢氧化猫.txt",
         "path": "老蒋语录/氢氧化猫.txt",
         "type": "text"
