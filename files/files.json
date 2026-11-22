@@ -184,6 +184,11 @@
         "type": "image"
       },
       {
+        "name": "书签卡片.jpg",
+        "path": "图片/书签卡片.jpg",
+        "type": "image"
+      },
+      {
         "name": "傅钧.png",
         "path": "图片/傅钧.png",
         "type": "image"
