@@ -282,6 +282,11 @@
         "name": "酱一瓶.png",
         "path": "图片/酱一瓶.png",
         "type": "image"
+      },
+      {
+        "name": "面批广告.jpg",
+        "path": "图片/面批广告.jpg",
+        "type": "image"
       }
     ]
   },
