@@ -448,6 +448,18 @@
     ]
   },
   {
+    "name": "表情包",
+    "path": "表情包",
+    "type": "folder",
+    "children": [
+      {
+        "name": "蒋包.png",
+        "path": "表情包/蒋包.png",
+        "type": "image"
+      }
+    ]
+  },
+  {
     "name": "[投稿前必读]使用教程.txt",
     "path": "[投稿前必读]使用教程.txt",
     "type": "text"
