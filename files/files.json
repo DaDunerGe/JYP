@@ -470,6 +470,11 @@
     "type": "text"
   },
   {
+    "name": "（APP端提示）.txt",
+    "path": "（APP端提示）.txt",
+    "type": "text"
+  },
+  {
     "name": "[投稿前必读]使用教程.txt",
     "path": "[投稿前必读]使用教程.txt",
     "type": "text"
