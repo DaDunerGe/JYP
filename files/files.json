@@ -174,6 +174,11 @@
         "type": "image"
       },
       {
+        "name": "face小广告.jpg",
+        "path": "图片/face小广告.jpg",
+        "type": "image"
+      },
+      {
         "name": "what is wrong.png",
         "path": "图片/what is wrong.png",
         "type": "image"
