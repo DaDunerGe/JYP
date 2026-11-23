@@ -3,3 +3,9 @@
 投稿前请务必阅读教程。
 暂时无法删除稿件，如需移除请通过重名稿件覆盖，后续将修复此问题。
 请避免在命名时输入_ ' * .等任何(英文)标点符号，否则将会出错。
+
+
+我们现已推出蒋语APP，以在Android设备上更方便地浏览和上传。
+下载地址：可点击下载
+Github：
+<a href="https://github.com/DaDunerGe/JYP/releases/download/APP/JiangYu_1.0.apk">https://github.com/DaDunerGe/JYP/releases/download/APP/JiangYu_1.0.apk</a>
