@@ -6,6 +6,7 @@
 
 
 我们现已推出蒋语APP，以在Android设备上更方便地浏览和上传。
-下载地址：可点击下载
+下载地址：可复制后在浏览器或下载器中打开来下载
 Github：
-<a href="https://github.com/DaDunerGe/JYP/releases/download/APP/JiangYu_1.0.apk">https://github.com/DaDunerGe/JYP/releases/download/APP/JiangYu_1.0.apk</a>
+
+https://github.com/DaDunerGe/JYP/releases/download/APP/JiangYu_1.0.apk
