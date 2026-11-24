@@ -189,6 +189,11 @@
         "type": "image"
       },
       {
+        "name": "WZM.png",
+        "path": "图片/WZM.png",
+        "type": "image"
+      },
+      {
         "name": "一代face壁纸.jpg",
         "path": "图片/一代face壁纸.jpg",
         "type": "image"
