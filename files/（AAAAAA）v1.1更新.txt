@@ -1,0 +1,7 @@
+蒋语 App现已更新v1.1版本
+
+浏览器打开链接：https://dadunerge.github.io/JYP/update.html以下载新版本
+或访问官网：https://dadunerge.github.io/JYP  下载
+
+
+更新内容：添加检查更新功能，优化图片加载速度。
