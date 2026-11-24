@@ -483,6 +483,11 @@
     "type": "folder",
     "children": [
       {
+        "name": "老蒋起六套.jpg",
+        "path": "表情包/老蒋起六套.jpg",
+        "type": "image"
+      },
+      {
         "name": "蒋包.png",
         "path": "表情包/蒋包.png",
         "type": "image"
