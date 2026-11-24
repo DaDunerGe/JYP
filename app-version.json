@@ -1,1 +1,1 @@
-{"versionCode": 5, "versionName": "1.1.3", "apkUrl": "https://github.com/dadunerge/JYP/raw/main/apk/JiangYu.apk", "changelog": "图片与内容改用 GitHub 原生 CDN，加载大幅提速"}
+{"versionCode": 6, "versionName": "1.1.4", "apkUrl": "https://github.com/dadunerge/JYP/raw/main/apk/JiangYu.apk", "changelog": "启动时自动选择更快的数据源，加载更稳定"}
