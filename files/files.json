@@ -179,6 +179,11 @@
         "type": "image"
       },
       {
+        "name": "facing.png",
+        "path": "图片/facing.png",
+        "type": "image"
+      },
+      {
         "name": "what is wrong.png",
         "path": "图片/what is wrong.png",
         "type": "image"
