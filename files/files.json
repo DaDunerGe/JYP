@@ -341,6 +341,11 @@
         "type": "text"
       },
       {
+        "name": "eacf.txt",
+        "path": "老蒋语录/eacf.txt",
+        "type": "text"
+      },
+      {
         "name": "f.txt",
         "path": "老蒋语录/f.txt",
         "type": "text"
