@@ -1,1 +1,1 @@
-{"versionCode": 6, "versionName": "1.1.4", "apkUrl": "https://github.com/dadunerge/JYP/raw/main/apk/JiangYu.apk", "changelog": "启动时自动选择更快的数据源，加载更稳定"}
+{"versionCode": 7, "versionName": "1.1.5", "apkUrl": "https://github.com/dadunerge/JYP/raw/main/apk/JiangYu.apk", "changelog": "修复上传页输入文字时输入框被键盘遮挡、只能盲打的问题"}
