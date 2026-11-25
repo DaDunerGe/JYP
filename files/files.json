@@ -371,6 +371,11 @@
         "type": "text"
       },
       {
+        "name": "tanks.txt",
+        "path": "老蒋语录/tanks.txt",
+        "type": "text"
+      },
+      {
         "name": "Tanksgiving Day.txt",
         "path": "老蒋语录/Tanksgiving Day.txt",
         "type": "text"
